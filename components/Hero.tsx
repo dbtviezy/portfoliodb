@@ -69,7 +69,7 @@ export default function Hero({ lang }: HeroProps) {
       y: -10, 
       transition: {
         duration: 0.2,
-        ease: "easeIn"
+        ease: [0.42, 0, 1, 1] as const
       }
     },
   };

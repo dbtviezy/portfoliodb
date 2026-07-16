@@ -3,7 +3,18 @@
 import { useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 
-export default function Contact() {
+// 1. Добавляем тип для пропсов
+interface ContactProps {
+  lang: "RU" | "EN"; // или просто string, смотря как описан твой тип Lang
+}
+
+// 2. Принимаем lang в функцию
+export default function Contact({ lang }: ContactProps) {
+  
+  // Если у тебя есть словари ru.json и en.json для этой секции, 
+  // можешь раскомментировать эти строчки:
+  // const t = lang === "RU" ? ru.contact : en.contact;
+
   const connections = [
     { name: "Email", value: "daniilbautin0@gmail.com", url: "mailto:daniilbautin0@gmail.com" },
     { name: "Telegram", value: "@dbtviezy", url: "https://t.me/dbtviezy" },

@@ -30,7 +30,7 @@ export default function Home() {
       <Projects />
       <About lang={lang} />
       <Skills />
-      <Contact />
+      <Contact lang={"RU"} />
       
       <Footer lang={lang} />
 

@@ -1,4 +1,8 @@
-export default function About() {
+interface AboutProps {
+  lang: "RU" | "EN";
+}
+
+export default function About({ lang }: AboutProps) {
   return (
     <section className="py-24 px-10 md:px-20 bg-[#0a0a0a] border-t border-zinc-900">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
