@@ -1,0 +1,14 @@
+{
+  "navbar": {
+    "projects": "Projects",
+    "contact": "Contact"
+  },
+  "about": {
+    "title": "ABOUT ME",
+    "desc": "I create interactive digital interfaces..."
+  },
+  "contact": {
+    "title": "Get in touch",
+    "button": "Send"
+  }
+}
