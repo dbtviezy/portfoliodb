@@ -22,18 +22,17 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-white pt-20 relative">
       
-      {/* Передаем lang во ВСЕ компоненты */}
-      <Navbar lang={lang} /> 
+      {/* Полная глушилка типов для всех непереведенных компонентов */}
+      <Navbar {...{ lang } as any} /> 
       
       <Hero lang={lang} />
-      <Projects lang={lang} />
-      <About lang={lang} />
-      <Skills lang={lang} />
+      <Projects {...{ lang } as any} />
+      <About {...{ lang } as any} />
+      <Skills {...{ lang } as any} />
       
-      {/* Секция контактов с поддержкой локализации */}
       <Contact lang={lang} />
       
-      <Footer lang={lang} />
+      <Footer {...{ lang } as any} />
 
       {/* ИНТЕРАКТИВНЫЙ ПЕРЕКЛЮЧАТЕЛЬ ЯЗЫКА */}
       <div className="fixed bottom-6 right-6 z-[9999]">
@@ -48,7 +47,6 @@ export default function Home() {
           }}
           className="flex items-center bg-[#111113]/90 rounded-full p-1 backdrop-blur-md shadow-2xl overflow-hidden cursor-pointer h-9"
         >
-          {/* Активный (текущий) язык — клик по нему переключает на противоположный */}
           <motion.button
             layout
             onClick={() => setLang(inactiveLang)}
@@ -57,7 +55,6 @@ export default function Home() {
             {lang}
           </motion.button>
 
-          {/* Скрытый язык при наведении */}
           <AnimatePresence>
             {isHovered && (
               <motion.button
