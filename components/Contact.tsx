@@ -3,17 +3,18 @@
 import { useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 
-// 1. Добавляем тип для пропсов
+// Импортируем словари через абсолютные пути из папки locales в корне проекта
+import ru from "@/locales/ru.json";
+import en from "@/locales/en.json";
+
 interface ContactProps {
-  lang: "RU" | "EN"; // или просто string, смотря как описан твой тип Lang
+  lang: "RU" | "EN";
 }
 
-// 2. Принимаем lang в функцию
 export default function Contact({ lang }: ContactProps) {
   
-  // Если у тебя есть словари ru.json и en.json для этой секции, 
-  // можешь раскомментировать эти строчки:
-  // const t = lang === "RU" ? ru.contact : en.contact;
+  // Выбираем нужный словарь на лету
+  const t = lang === "RU" ? ru.contact : en.contact;
 
   const connections = [
     { name: "Email", value: "daniilbautin0@gmail.com", url: "mailto:daniilbautin0@gmail.com" },
@@ -31,8 +32,6 @@ export default function Contact({ lang }: ContactProps) {
   });
 
   // --- НАСТРОЙКИ СКРОЛЛА (+20% ОТ СЕРЕДИНЫ) ---
-  // Карточки вылетают плотной волной, когда секция уже высоко на экране
-  
   // --- Карточка 0 (Email) ---
   const opacity0 = useTransform(scrollYProgress, [0, 0.70, 0.91, 1], [0, 0, 1, 1]);
   const y0 = useTransform(scrollYProgress, [0, 0.70, 0.91, 1], [-60, -60, 0, 0]);
@@ -64,20 +63,20 @@ export default function Contact({ lang }: ContactProps) {
     >
       <div className="w-full max-w-4xl text-center flex flex-col items-center relative">
         
-        {/* Пред-заголовок (снова статичный) */}
+        {/* Пред-заголовок */}
         <span className="text-xs font-semibold tracking-widest text-zinc-500 uppercase mb-6 block select-none">
-          Get in Touch
+          {t.subtitle}
         </span>
 
-        {/* Огромный заголовок */}
+        {/* Огромный двухцветный заголовок */}
         <a 
           href="mailto:daniilbautin0@gmail.com"
           className="group relative block mb-16 select-none z-10"
         >
           <h2 className="text-4xl md:text-7xl font-bold tracking-tighter text-zinc-300 group-hover:text-white transition-colors duration-500 leading-tight">
-            Let’s build something <br />
+            {t.title1} <br />
             <span className="text-zinc-600 group-hover:text-zinc-400 transition-colors duration-500">
-              great together.
+              {t.title2}
             </span>
           </h2>
           <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-12 h-[1px] bg-zinc-700 group-hover:w-full transition-all duration-500" />
@@ -99,7 +98,7 @@ export default function Contact({ lang }: ContactProps) {
                   opacity: opacity,
                   y: y,
                 }}
-                className="relative p-5 bg-[#111113] border border-zinc-900/80 rounded-2xl flex flex-col items-start text-left overflow-hidden cursor-pointer select-none"
+                className="relative p-5 bg-[#111113] border border-zinc-900/80 rounded-2xl flex flex-col items-start text-left overflow-hidden cursor-pointer select-none group"
               >
                 {/* Подложка для ховера */}
                 <motion.div 

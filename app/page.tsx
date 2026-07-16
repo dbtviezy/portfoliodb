@@ -13,30 +13,29 @@ import Footer from "@/components/Footer";
 export type Lang = "RU" | "EN";
 
 export default function Home() {
-  // 1. Установили дефолтное (сток) значение "EN"
+  // Дефолтный язык
   const [lang, setLang] = useState<Lang>("EN");
   const [isHovered, setIsHovered] = useState(false);
 
-  const languages: Lang[] = ["EN", "RU"];
-  // Неактивный язык, который прячется/показывается при ховере
   const inactiveLang = lang === "EN" ? "RU" : "EN";
 
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-white pt-20 relative">
       
+      {/* Передаем lang во ВСЕ компоненты */}
       <Navbar lang={lang} /> 
       
       <Hero lang={lang} />
-      <Projects />
+      <Projects lang={lang} />
       <About lang={lang} />
-      <Skills />
-      <Contact lang={"RU"} />
+      <Skills lang={lang} />
+      
+      {/* Секция контактов с поддержкой локализации */}
+      <Contact lang={lang} />
       
       <Footer lang={lang} />
 
-      {/* 
-        ИНТЕРАКТИВНЫЙ ПЕРЕКЛЮЧАТЕЛЬ ЯЗЫКА
-      */}
+      {/* ИНТЕРАКТИВНЫЙ ПЕРЕКЛЮЧАТЕЛЬ ЯЗЫКА */}
       <div className="fixed bottom-6 right-6 z-[9999]">
         <motion.div
           onMouseEnter={() => setIsHovered(true)}
@@ -47,19 +46,18 @@ export default function Home() {
             stiffness: 350,
             damping: 26
           }}
-          // Убрали border, оставили чистый полупрозрачный темный фон с размытием
           className="flex items-center bg-[#111113]/90 rounded-full p-1 backdrop-blur-md shadow-2xl overflow-hidden cursor-pointer h-9"
         >
-          {/* Активный (текущий) язык — виден всегда */}
+          {/* Активный (текущий) язык — клик по нему переключает на противоположный */}
           <motion.button
             layout
-            onClick={() => setLang(lang)}
+            onClick={() => setLang(inactiveLang)}
             className="w-7 h-7 text-[10px] font-extrabold tracking-wider rounded-full bg-zinc-100 text-[#0a0a0a] flex items-center justify-center transition-colors duration-250 select-none"
           >
             {lang}
           </motion.button>
 
-          {/* Скрытый язык — выезжает справа при ховере */}
+          {/* Скрытый язык при наведении */}
           <AnimatePresence>
             {isHovered && (
               <motion.button
@@ -70,7 +68,7 @@ export default function Home() {
                 transition={{ duration: 0.2, ease: "easeInOut" }}
                 onClick={() => {
                   setLang(inactiveLang);
-                  setIsHovered(false); // Скрываем после клика
+                  setIsHovered(false);
                 }}
                 className="h-7 text-[10px] font-extrabold tracking-wider text-zinc-500 hover:text-zinc-300 flex items-center justify-center select-none whitespace-nowrap"
               >
