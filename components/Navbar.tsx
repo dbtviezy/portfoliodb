@@ -1,94 +1,81 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback, memo } from "react";
 import Link from "next/link";
-// 1. Импортируем словари
-import ru from "@/locales/ru.json";
-import en from "@/locales/en.json";
+import { useContent } from "@/components/ContentProvider";
 
-// 2. Объявляем пропсы для языка
 interface NavbarProps {
   lang: "RU" | "EN";
 }
 
-// 3. ОДНО Единственное объявление функции Navbar
-export default function Navbar({ lang }: NavbarProps) {
+const Navbar = memo(function Navbar({ lang }: NavbarProps) {
+  const { content } = useContent();
+  const t = content.navbar;
+
   const triggerText = "db.tviezy";
   const targetText = "daniil bautin";
   const [displayText, setDisplayText] = useState(triggerText);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Выбираем переводы из JSON
-  const t = lang === "RU" ? ru.navbar : en.navbar;
+  const rafRef = useRef<number | null>(null);
+  const stateRef = useRef({ iteration: 0, isAnimating: false, isEntering: false });
 
   const letters = "abcdefghijklmnopqrstuvwxyz";
 
-  const handleMouseEnter = () => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    let iteration = 0;
+  const animate = useCallback(() => {
+    const state = stateRef.current;
+    const currentText = state.isEntering ? targetText : triggerText;
 
-    intervalRef.current = setInterval(() => {
-      setDisplayText((prev) =>
-        targetText
-          .split("")
-          .map((letter, index) => {
-            if (index < iteration) {
-              return targetText[index];
-            }
-            if (targetText[index] === " ") {
-              return " ";
-            }
-            return letters[Math.floor(Math.random() * 26)];
-          })
-          .join("")
-      );
+    if (state.iteration >= currentText.length) {
+      state.isAnimating = false;
+      return;
+    }
 
-      if (iteration >= targetText.length) {
-        if (intervalRef.current) clearInterval(intervalRef.current);
-      }
-      iteration += 1 / 3;
-    }, 30);
-  };
+    setDisplayText(
+      currentText
+        .split("")
+        .map((letter, index) => {
+          if (index < state.iteration) {
+            return currentText[index];
+          }
+          if (currentText[index] === " ") {
+            return " ";
+          }
+          return letters[Math.floor(Math.random() * 26)];
+        })
+        .join("")
+    );
 
-  const handleMouseLeave = () => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    let iteration = 0;
+    state.iteration += 1 / 3;
+    rafRef.current = requestAnimationFrame(animate);
+  }, [letters, triggerText, targetText]);
 
-    intervalRef.current = setInterval(() => {
-      setDisplayText((prev) =>
-        triggerText
-          .split("")
-          .map((letter, index) => {
-            if (index < iteration) {
-              return triggerText[index];
-            }
-            if (triggerText[index] === " ") {
-              return " ";
-            }
-            return letters[Math.floor(Math.random() * 26)];
-          })
-          .join("")
-      );
+  const handleMouseEnter = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    stateRef.current = { iteration: 0, isAnimating: true, isEntering: true };
+    rafRef.current = requestAnimationFrame(animate);
+  }, [animate]);
 
-      if (iteration >= triggerText.length) {
-        if (intervalRef.current) clearInterval(intervalRef.current);
-      }
-      iteration += 1 / 3;
-    }, 30);
-  };
+  const handleMouseLeave = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    stateRef.current = { iteration: 0, isAnimating: true, isEntering: false };
+    rafRef.current = requestAnimationFrame(animate);
+  }, [animate]);
+
+  useEffect(() => {
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
 
   return (
     <nav className="fixed top-0 left-0 w-full z-40 bg-[#0a0a0a]/80 backdrop-blur-md border-b border-zinc-900/50 px-6 md:px-20 lg:px-32 h-20 flex justify-between items-center">
-      {/* Твой анимированный логотип */}
-      <div 
+      <div
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         className="font-mono text-xs md:text-sm text-zinc-400 font-bold tracking-wider cursor-pointer h-5 flex items-center min-w-[120px]"
       >
         $ {displayText}
       </div>
-      
-      {/* Локализованные ссылки */}
+
       <div className="flex gap-6 text-xs md:text-sm text-zinc-500 font-medium tracking-wide">
         <Link href="#projects" className="hover:text-zinc-200 transition-colors duration-200">
           {t.projects}
@@ -99,4 +86,6 @@ export default function Navbar({ lang }: NavbarProps) {
       </div>
     </nav>
   );
-}
+});
+
+export default Navbar;

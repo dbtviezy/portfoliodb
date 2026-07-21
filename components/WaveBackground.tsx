@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, memo } from 'react';
 
-export default function WaveBackground() {
+const WaveBackground = memo(function WaveBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mouseRef = useRef({ x: 0, y: 0, targetX: 0, targetY: 0 });
 
@@ -122,4 +122,6 @@ export default function WaveBackground() {
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-[#0a0a0a] via-transparent via-80% to-[#0a0a0a] opacity-20" />
     </div>
   );
-}
+});
+
+export default WaveBackground;

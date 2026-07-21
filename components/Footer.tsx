@@ -1,12 +1,13 @@
 "use client";
 
+import { memo } from "react";
 import { motion } from "framer-motion";
 
 interface FooterProps {
   lang: "RU" | "EN";
 }
 
-export default function Footer({ lang }: FooterProps) {
+const Footer = memo(function Footer({ lang }: FooterProps) {
   const currentYear = new Date().getFullYear();
 
   return (
@@ -79,4 +80,6 @@ export default function Footer({ lang }: FooterProps) {
 
     </div>
   );
-}
+});
+
+export default Footer;

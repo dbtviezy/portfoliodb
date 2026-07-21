@@ -12,13 +12,108 @@
   },
   "about": {
     "title": "ABOUT ME",
-    "desc": "I create interactive digital interfaces..."
+    "profileImage": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80",
+    "desc1": "Motion designer and digital creative with a passion for crafting visual experiences that captivate and engage. I specialize in blending aesthetics with functionality to create interfaces that users love.",
+    "desc2": "My approach combines meticulous attention to detail with strategic thinking. I believe great design tells a story—every animation, every pixel serves a purpose. From concept to execution, I focus on delivering work that doesn't just look beautiful, but drives real results for brands and products.",
+    "expertise": "WHAT I DO",
+    "expertiseItems": [
+      "Motion Graphics",
+      "UI/UX Design",
+      "Interactive Design",
+      "Branding & Identity",
+      "Web Design",
+      "Design Systems",
+      "Prototyping",
+      "Animation"
+    ],
+    "stats": [
+      { "value": "5+", "label": "Years Experience" },
+      { "value": "50+", "label": "Projects Delivered" },
+      { "value": "10+", "label": "Team Collaborations" }
+    ]
+  },
+  "projects": {
+    "title": "SELECTED PROJECTS",
+    "showing": "Showing",
+    "of": "of",
+    "viewAll": "View All Projects",
+    "allTitle": "ALL PROJECTS",
+    "featured": [
+      {
+        "title": "Nova Smart Home",
+        "category": "Mobile App • IoT System",
+        "year": "2025",
+        "description": "A minimalist mobile application designed to control and monitor smart home devices with seamless interactive widgets.",
+        "image": "https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=1200&q=80"
+      },
+      {
+        "title": "Linear Analytics",
+        "category": "Web Platform • Dashboard",
+        "year": "2026",
+        "description": "High-performance real-time analytics dashboard with custom-built dark mode visual aesthetics and interactive data charts.",
+        "image": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80"
+      }
+    ],
+    "allItems": [
+      {
+        "title": "Nova Smart Home",
+        "category": "Mobile App • IoT System",
+        "year": "2025",
+        "description": "A minimalist mobile application designed to control and monitor smart home devices with seamless interactive widgets.",
+        "image": "https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=1200&q=80"
+      },
+      {
+        "title": "Linear Analytics",
+        "category": "Web Platform • Dashboard",
+        "year": "2026",
+        "description": "High-performance real-time analytics dashboard with custom-built dark mode visual aesthetics and interactive data charts.",
+        "image": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80"
+      },
+      {
+        "title": "Brand Identity System",
+        "category": "Branding • Design System",
+        "year": "2024",
+        "description": "Comprehensive brand identity including logo, color palette, typography, and UI components for enterprise client.",
+        "image": "https://images.unsplash.com/photo-1561070791-2526d30994b5?auto=format&fit=crop&w=1200&q=80"
+      },
+      {
+        "title": "E-Commerce Redesign",
+        "category": "Web Design • UX",
+        "year": "2024",
+        "description": "Complete redesign of e-commerce platform improving user experience and increasing conversion rates by 45%.",
+        "image": "https://images.unsplash.com/photo-1460925895917-adf4e12a5b91?auto=format&fit=crop&w=1200&q=80"
+      },
+      {
+        "title": "Social App Interface",
+        "category": "Mobile App • UI Design",
+        "year": "2024",
+        "description": "Modern social networking app interface with animated interactions and real-time features for seamless user engagement.",
+        "image": "https://images.unsplash.com/photo-1512941691920-25bda097440d?auto=format&fit=crop&w=1200&q=80"
+      },
+      {
+        "title": "Streaming Platform UI",
+        "category": "Web Platform • Design",
+        "year": "2023",
+        "description": "Premium streaming service interface with smooth animations, personalized recommendations, and adaptive layouts.",
+        "image": "https://images.unsplash.com/photo-1533928298208-27ff66555d30?auto=format&fit=crop&w=1200&q=80"
+      }
+    ]
+  },
+  "skills": {
+    "title": "SKILLS & TOOLS",
+    "items": [
+      "Figma",
+      "Photoshop",
+      "Illustrator",
+      "UI/UX Design",
+      "Prototyping",
+      "Design Systems"
+    ]
   },
   "contact": {
     "subtitle": "Get in Touch",
-    "title1": "Let’s build something",
+    "title1": "Let's build something",
     "title2": "great together.",
     "button": "Write me"
   }
-  
 }

@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Portfolio {
+  id               Int      @id @default(autoincrement())
+  lang             String   @default("en")
+  heroLocation     String   @default("Based in Russia")
+  heroText1        String   @default("MOTION DESIGNER")
+  heroText2        String   @default("CREATIVE DEVELOPER")
+  heroDesc         String   @default("Creating high-end motion graphics...")
+  heroBtn          String   @default("Explore Projects")
+  aboutTitle       String   @default("ABOUT ME")
+  aboutDesc1       String   @default("Motion designer and digital creative...")
+  aboutDesc2       String   @default("My approach combines meticulous...")
+  aboutExpertise   String   @default("WHAT I DO")
+  profileImage     String   @default("")
+  aboutStats1Label String   @default("Years Experience")
+  aboutStats1Value String   @default("5+")
+  aboutStats2Label String   @default("Projects Delivered")
+  aboutStats2Value String   @default("50+")
+  aboutStats3Label String   @default("Team Collaborations")
+  aboutStats3Value String   @default("10+")
+  contactSubtitle  String   @default("Get in Touch")
+  contactTitle1    String   @default("Let's build something")
+  contactTitle2    String   @default("great together.")
+  contactBtn       String   @default("Write me")
+  contactEmail     String   @default("")
+  contactTelegram  String   @default("")
+  contactBehance   String   @default("")
+  contactDribbble  String   @default("")
+  navbarProjects   String   @default("Projects")
+  navbarContact    String   @default("Contact")
+  skillsTitle      String   @default("SKILLS & TOOLS")
+  projectsTitle    String   @default("SELECTED PROJECTS")
+  projectsShowing  String   @default("Showing")
+  projectsOf       String   @default("of")
+  projectsViewAll  String   @default("View All Projects")
+  projectsAllTitle String   @default("ALL PROJECTS")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([lang])
+}
+
+model Skill {
+  id        Int      @id @default(autoincrement())
+  lang      String   @default("en")
+  name      String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ExpertiseItem {
+  id        Int      @id @default(autoincrement())
+  lang      String   @default("en")
+  name      String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Project {
+  id          Int      @id @default(autoincrement())
+  title       String
+  category    String
+  year        String
+  description String
+  image       String
+  featured    Boolean  @default(false)
+  order       Int      @default(0)
+  lang        String   @default("en")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([featured])
+  @@index([lang])
+}
