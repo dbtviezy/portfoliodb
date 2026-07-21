@@ -1,125 +1,145 @@
 "use client";
 
-import { useRef, memo, useMemo } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { memo, useMemo, useRef } from "react";
+import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { useContent } from "@/components/ContentProvider";
+import { guessChannelUrl } from "@/lib/contact-channels";
 
 interface ContactProps {
   lang: "RU" | "EN";
 }
 
+function quietHeading(title1: string, lang: "RU" | "EN") {
+  const t = title1.trim();
+  if (!t) return lang === "RU" ? "Напишите" : "Write me";
+  if (/get in touch|let'?s build|great together|hello$|давайте создадим|потрясающ|^say hello$/i.test(t)) {
+    return lang === "RU" ? "Напишите" : "Write me";
+  }
+  return t;
+}
+
+function quietEyebrow(subtitle: string, lang: "RU" | "EN") {
+  const t = subtitle.trim();
+  if (!t || /get in touch|связаться/i.test(t)) {
+    return lang === "RU" ? "Связь" : "Contact";
+  }
+  return t;
+}
+
 const Contact = memo(function Contact({ lang }: ContactProps) {
   const { content } = useContent();
   const t = content.contact;
+  const reduceMotion = useReducedMotion();
+  const sectionRef = useRef<HTMLElement>(null);
 
-  const connections = useMemo(
-    () => [
-      { name: "Email", value: t.email, url: `mailto:${t.email}` },
-      { name: "Telegram", value: t.telegram, url: `https://t.me/${t.telegram.replace("@", "")}` },
-      { name: "Behance", value: t.behance, url: `https://${t.behance}` },
-      { name: "Dribbble", value: t.dribbble, url: `https://${t.dribbble}` },
-    ],
-    [t]
+  const eyebrow = quietEyebrow(t.subtitle ?? "", lang);
+  const heading = quietHeading(t.title1 ?? "", lang);
+  const blurb =
+    t.button?.trim() && !/write me|^написать$/i.test(t.button.trim())
+      ? t.button.trim()
+      : lang === "RU"
+        ? "Коротко о проекте — или просто hello."
+        : "A short note about a project — or just hello.";
+
+  const channels = useMemo(
+    () => (t.channels ?? []).filter((c) => c.label.trim() && c.value.trim()),
+    [t.channels]
   );
-
-  const containerRef = useRef<HTMLDivElement>(null);
+  const primaries = channels.filter((c) => c.group !== "social");
+  const socials = channels.filter((c) => c.group === "social");
 
   const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start end", "end end"],
+    target: sectionRef,
+    offset: ["start end", "center center"],
   });
 
-  const opacity0 = useTransform(scrollYProgress, [0, 0.7, 0.91, 1], [0, 0, 1, 1]);
-  const y0 = useTransform(scrollYProgress, [0, 0.7, 0.91, 1], [-60, -60, 0, 0]);
-  const opacity1 = useTransform(scrollYProgress, [0, 0.76, 0.94, 1], [0, 0, 1, 1]);
-  const y1 = useTransform(scrollYProgress, [0, 0.76, 0.94, 1], [-60, -60, 0, 0]);
-  const opacity2 = useTransform(scrollYProgress, [0, 0.82, 0.97, 1], [0, 0, 1, 1]);
-  const y2 = useTransform(scrollYProgress, [0, 0.82, 0.97, 1], [-60, -60, 0, 0]);
-  const opacity3 = useTransform(scrollYProgress, [0, 0.88, 1.0, 1], [0, 0, 1, 1]);
-  const y3 = useTransform(scrollYProgress, [0, 0.88, 1.0, 1], [-60, -60, 0, 0]);
-
-  const cardAnimations = [
-    { opacity: opacity0, y: y0 },
-    { opacity: opacity1, y: y1 },
-    { opacity: opacity2, y: y2 },
-    { opacity: opacity3, y: y3 },
-  ];
+  const y = useTransform(scrollYProgress, [0, 1], reduceMotion ? [0, 0] : [28, 0]);
 
   return (
     <section
+      ref={sectionRef}
       id="contact"
-      ref={containerRef}
-      className="py-32 px-6 md:px-20 bg-[#0a0a0a] border-t border-zinc-900/50 flex flex-col items-center overflow-hidden"
+      className="relative overflow-hidden"
+      style={{
+        paddingLeft: "var(--page-x)",
+        paddingRight: "var(--page-x)",
+        paddingTop: "calc(var(--section-y) * 0.9)",
+        paddingBottom: "calc(var(--section-y) * 0.85 + var(--safe-bottom))",
+      }}
     >
-      <div className="w-full max-w-4xl text-center flex flex-col items-center relative">
-        <span className="text-xs font-semibold tracking-widest text-zinc-500 uppercase mb-6 block select-none">
-          {t.subtitle}
-        </span>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_8%_20%,rgba(255,255,255,0.04),transparent_55%)]"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/14 to-transparent"
+      />
 
-        <a href={`mailto:${t.email}`} className="group relative block mb-16 select-none z-10">
-          <h2 className="text-4xl md:text-7xl font-bold tracking-tighter text-zinc-300 group-hover:text-white transition-colors duration-500 leading-tight">
-            {t.title1} <br />
-            <span className="text-zinc-600 group-hover:text-zinc-400 transition-colors duration-500">
-              {t.title2}
-            </span>
-          </h2>
-          <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-12 h-[1px] bg-zinc-700 group-hover:w-full transition-all duration-500" />
-        </a>
+      <motion.div
+        style={{ y, opacity: 1 }}
+        className="relative mx-auto w-full max-w-5xl 2xl:max-w-6xl"
+      >
+        <p className="mb-3 font-mono text-[10px] tracking-[0.28em] text-[var(--text-faint)] sm:text-[11px]">
+          {eyebrow}
+        </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 w-full mt-8 relative z-0">
-          {connections.map((link, index) => {
-            const { opacity, y } = cardAnimations[index];
+        <h2 className="text-[clamp(1.65rem,4.5vw,2.35rem)] font-semibold tracking-tight text-[var(--text)]">
+          {heading}
+        </h2>
 
-            return (
-              <motion.a
-                href={link.url}
-                key={index}
-                target="_blank"
-                rel="noopener noreferrer"
-                whileHover="hover"
-                style={{
-                  opacity,
-                  y,
-                }}
-                className="relative p-5 bg-[#111113] border border-zinc-900/80 rounded-2xl flex flex-col items-start text-left overflow-hidden cursor-pointer select-none group"
-              >
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  variants={{
-                    hover: { opacity: 1 },
-                  }}
-                  transition={{ duration: 0.2 }}
-                  className="absolute inset-0 bg-[#161619] z-0"
-                />
+        <p className="mt-3 max-w-sm text-[13px] leading-relaxed text-[var(--text-faint)] sm:text-sm">
+          {blurb}
+        </p>
 
-                <span className="relative z-10 text-xs font-semibold tracking-widest text-zinc-500 uppercase mb-2">
-                  {link.name}
-                </span>
-
-                <div className="relative z-10 flex items-center gap-1.5 w-full justify-between">
-                  <span className="text-sm font-medium text-zinc-400 group-hover:text-zinc-200 transition-colors truncate">
-                    {link.value}
-                  </span>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={2}
-                    stroke="currentColor"
-                    className="w-3.5 h-3.5 text-zinc-600 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+        {primaries.length > 0 ? (
+          <ul className="mt-8 flex flex-col gap-5 sm:mt-9 sm:flex-row sm:flex-wrap sm:gap-x-14 sm:gap-y-5">
+            {primaries.map((link) => {
+              const href = link.url || guessChannelUrl(link.label, link.value);
+              return (
+                <li key={`${link.label}-${link.value}`}>
+                  <a
+                    href={href}
+                    target={href.startsWith("mailto:") ? undefined : "_blank"}
+                    rel={href.startsWith("mailto:") ? undefined : "noopener noreferrer"}
+                    className="group inline-flex flex-col gap-1.5"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25"
-                    />
-                  </svg>
-                </div>
-              </motion.a>
-            );
-          })}
-        </div>
-      </div>
+                    <span className="text-[10px] tracking-[0.2em] text-[var(--text-faint)] sm:text-[11px]">
+                      {link.label}
+                    </span>
+                    <span className="border-b border-white/20 pb-0.5 text-[15px] text-[var(--text)] transition group-hover:border-white/45 sm:text-base">
+                      {link.value}
+                    </span>
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        ) : null}
+
+        {socials.length > 0 ? (
+          <>
+            <div className="mt-10 h-px w-full max-w-md bg-gradient-to-r from-white/16 via-white/6 to-transparent sm:mt-11" />
+            <ul className="mt-5 flex flex-wrap gap-x-7 gap-y-2.5 sm:gap-x-8">
+              {socials.map((link) => {
+                const href = link.url || guessChannelUrl(link.label, link.value);
+                return (
+                  <li key={`${link.label}-${link.value}`}>
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[13px] text-[var(--text-faint)] transition hover:text-[var(--text)] sm:text-sm"
+                    >
+                      {link.label}
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        ) : null}
+      </motion.div>
     </section>
   );
 });

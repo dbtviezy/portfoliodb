@@ -13,7 +13,7 @@ const Skills = memo(function Skills({ lang }: SkillsProps) {
   const skills = t.items;
 
   return (
-    <section className="py-24 px-10 md:px-20 bg-[#0a0a0a] border-t border-zinc-900">
+    <section className="py-24 px-10 md:px-20 bg-[var(--bg)] border-t border-zinc-900">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
         <div>
           <h2 className="text-sm font-semibold tracking-widest text-zinc-400 uppercase">

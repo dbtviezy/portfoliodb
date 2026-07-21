@@ -1,81 +1,94 @@
+import { config } from "dotenv";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import en from "../locales/en.json";
 import ru from "../locales/ru.json";
+
+config({ path: ".env.example" });
+config({ path: ".env" });
+
+if (!process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = "file:./dev.db";
+}
 
 const prisma = new PrismaClient();
 
 type LocaleData = typeof en;
 
 async function seedLanguage(lang: "en" | "ru", data: LocaleData) {
-  await prisma.portfolio.upsert({
-    where: { lang },
-    create: {
-      lang,
-      heroLocation: data.hero.location,
-      heroText1: data.hero.text1,
-      heroText2: data.hero.text2,
-      heroDesc: data.hero.desc,
-      heroBtn: data.hero.btn,
-      aboutTitle: data.about.title,
-      aboutDesc1: data.about.desc1,
-      aboutDesc2: data.about.desc2,
-      aboutExpertise: data.about.expertise,
-      profileImage: data.about.profileImage,
-      aboutStats1Value: data.about.stats[0].value,
-      aboutStats1Label: data.about.stats[0].label,
-      aboutStats2Value: data.about.stats[1].value,
-      aboutStats2Label: data.about.stats[1].label,
-      aboutStats3Value: data.about.stats[2].value,
-      aboutStats3Label: data.about.stats[2].label,
-      contactSubtitle: data.contact.subtitle,
-      contactTitle1: data.contact.title1,
-      contactTitle2: data.contact.title2,
-      contactBtn: data.contact.button,
-      contactEmail: "daniilbautin0@gmail.com",
-      contactTelegram: "@dbtviezy",
-      contactBehance: "behance.net/3606019f",
-      contactDribbble: "dribbble.com/db-tviezy",
-      navbarProjects: data.navbar.projects,
-      navbarContact: data.navbar.contact,
-      skillsTitle: data.skills.title,
-      projectsTitle: data.projects.title,
-      projectsShowing: data.projects.showing,
-      projectsOf: data.projects.of,
-      projectsViewAll: data.projects.viewAll,
-      projectsAllTitle: data.projects.allTitle,
-    },
-    update: {
-      heroLocation: data.hero.location,
-      heroText1: data.hero.text1,
-      heroText2: data.hero.text2,
-      heroDesc: data.hero.desc,
-      heroBtn: data.hero.btn,
-      aboutTitle: data.about.title,
-      aboutDesc1: data.about.desc1,
-      aboutDesc2: data.about.desc2,
-      aboutExpertise: data.about.expertise,
-      profileImage: data.about.profileImage,
-      aboutStats1Value: data.about.stats[0].value,
-      aboutStats1Label: data.about.stats[0].label,
-      aboutStats2Value: data.about.stats[1].value,
-      aboutStats2Label: data.about.stats[1].label,
-      aboutStats3Value: data.about.stats[2].value,
-      aboutStats3Label: data.about.stats[2].label,
-      contactSubtitle: data.contact.subtitle,
-      contactTitle1: data.contact.title1,
-      contactTitle2: data.contact.title2,
-      contactBtn: data.contact.button,
-      navbarProjects: data.navbar.projects,
-      navbarContact: data.navbar.contact,
-      skillsTitle: data.skills.title,
-      projectsTitle: data.projects.title,
-      projectsShowing: data.projects.showing,
-      projectsOf: data.projects.of,
-      projectsViewAll: data.projects.viewAll,
-      projectsAllTitle: data.projects.allTitle,
-    },
-  });
+  const portfolioData = {
+    heroLocation: data.hero.location,
+    heroText1: data.hero.text1,
+    heroText2: data.hero.text2,
+    heroDesc: data.hero.desc,
+    heroBtn: data.hero.btn,
+    aboutTitle: data.about.title,
+    aboutDesc1: data.about.desc1,
+    aboutDesc2: data.about.desc2,
+    aboutExpertise: data.about.expertise,
+    profileImage: data.about.profileImage,
+    aboutStats1Value: data.about.stats[0].value,
+    aboutStats1Label: data.about.stats[0].label,
+    aboutStats2Value: data.about.stats[1].value,
+    aboutStats2Label: data.about.stats[1].label,
+    aboutStats3Value: data.about.stats[2].value,
+    aboutStats3Label: data.about.stats[2].label,
+    contactSubtitle: data.contact.subtitle,
+    contactTitle1: data.contact.title1,
+    contactTitle2: data.contact.title2,
+    contactBtn: data.contact.button,
+    contactEmail: "daniilbautin0@gmail.com",
+    contactTelegram: "@dbtviezy",
+    contactBehance: "behance.net/3606019f",
+    contactDribbble: "dribbble.com/db-tviezy",
+    contactInstagram: "",
+    contactChannels: JSON.stringify([
+      {
+        label: "Email",
+        value: "daniilbautin0@gmail.com",
+        url: "mailto:daniilbautin0@gmail.com",
+        group: "primary",
+      },
+      {
+        label: "Telegram",
+        value: "@dbtviezy",
+        url: "https://t.me/dbtviezy",
+        group: "primary",
+      },
+      {
+        label: "Behance",
+        value: "behance.net/3606019f",
+        url: "https://behance.net/3606019f",
+        group: "social",
+      },
+      {
+        label: "Dribbble",
+        value: "dribbble.com/db-tviezy",
+        url: "https://dribbble.com/db-tviezy",
+        group: "social",
+      },
+    ]),
+    navbarProjects: data.navbar.projects,
+    navbarContact: data.navbar.contact,
+    skillsTitle: data.skills.title,
+    projectsTitle: data.projects.title,
+    projectsShowing: data.projects.showing,
+    projectsOf: data.projects.of,
+    projectsViewAll: data.projects.viewAll,
+    projectsAllTitle: data.projects.allTitle,
+  };
+
+  const existingPortfolio = await prisma.portfolio.findFirst({ where: { lang } });
+  if (existingPortfolio) {
+    await prisma.portfolio.update({
+      where: { id: existingPortfolio.id },
+      data: portfolioData,
+    });
+  } else {
+    await prisma.portfolio.create({
+      data: { lang, ...portfolioData },
+    });
+  }
 
   await prisma.skill.deleteMany({ where: { lang } });
   await prisma.skill.createMany({
@@ -95,7 +108,12 @@ async function seedLanguage(lang: "en" | "ru", data: LocaleData) {
       category: project.category,
       year: project.year,
       description: project.description,
+      detail: project.description,
       image: project.image,
+      links: JSON.stringify([
+        { label: "Behance", url: "https://behance.net/3606019f" },
+        { label: "Dribbble", url: "https://dribbble.com/dbtviezy" },
+      ]),
       featured: data.projects.featured.some((item) => item.title === project.title),
       order,
     })),

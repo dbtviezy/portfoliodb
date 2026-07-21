@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, memo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { memo } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import WaveBackground from "./WaveBackground";
 import { useContent } from "@/components/ContentProvider";
 
@@ -9,118 +9,105 @@ interface HeroProps {
   lang: "RU" | "EN";
 }
 
+const ease = [0.22, 1, 0.36, 1] as const;
+
 const Hero = memo(function Hero({ lang }: HeroProps) {
   const { content } = useContent();
-  const t = content.hero;
-  const [isHovered, setIsHovered] = useState(false);
+  const name = lang === "RU" ? "Даниил Баутин" : "Daniil Bautin";
+  const reduceMotion = useReducedMotion();
 
-  const containerVariants = {
-    hidden: {},
-    visible: {
-      transition: {
-        staggerChildren: 0.03,
-      },
-    },
-    exit: {
-      transition: {
-        staggerChildren: 0.02,
-        staggerDirection: -1,
-      },
-    },
-  };
-
-  const letterVariants = {
-    hidden: {
-      opacity: 0,
-      filter: "blur(12px)",
-      y: 10,
-    },
-    visible: {
-      opacity: 1,
-      filter: "blur(0px)",
-      y: 0,
-      transition: {
-        duration: 0.3,
-        ease: [0.215, 0.61, 0.355, 1.0] as const,
-      },
-    },
-    exit: {
-      opacity: 0,
-      filter: "blur(10px)",
-      y: -10,
-      transition: {
-        duration: 0.2,
-        ease: [0.42, 0, 1, 1] as const,
-      },
-    },
-  };
-
-  const renderLetters = (text: string) => {
-    return text.split("").map((char, index) => (
-      <motion.span
-        key={`${char}-${index}`}
-        variants={letterVariants}
-        className="inline-block"
-        style={{ display: char === " " ? "inline" : "inline-block" }}
-      >
-        {char === " " ? "\u00A0" : char}
-      </motion.span>
-    ));
-  };
+  const enter = (delay: number, y = 18) =>
+    reduceMotion
+      ? { initial: { opacity: 1, y: 0 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0 } }
+      : {
+          initial: { opacity: 0, y },
+          animate: { opacity: 1, y: 0 },
+          transition: { duration: 0.72, ease, delay },
+        };
 
   return (
-    <section className="min-h-screen w-full flex flex-col justify-start items-start pt-32 md:pt-48 relative overflow-hidden select-none bg-[#0a0a0a]">
+    <section
+      aria-label={lang === "RU" ? "Визитка" : "Calling card"}
+      className="relative flex w-full items-center justify-center overflow-x-clip bg-transparent select-none"
+      style={{ minHeight: "var(--hero-min)" }}
+    >
       <WaveBackground />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none z-10" />
 
-      <div className="z-20 relative w-full px-8 md:px-32 flex flex-col items-start">
-        <span className="text-xs font-semibold tracking-[0.2em] text-zinc-500 uppercase mb-6 block">
-          {t.location}
-        </span>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(ellipse_90%_70%_at_70%_15%,rgba(255,255,255,0.1),transparent_55%),radial-gradient(ellipse_70%_55%_at_8%_80%,rgba(130,145,185,0.09),transparent_50%)]"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -left-[22%] top-[-18%] z-[2] h-[55%] w-[70%] rounded-full bg-white/[0.045] blur-3xl animate-[heroGlow_16s_ease-in-out_infinite]"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-[18%] bottom-[-25%] z-[2] h-[50%] w-[60%] rounded-full bg-white/[0.03] blur-3xl animate-[heroGlowAlt_20s_ease-in-out_infinite]"
+      />
+      <div className="pointer-events-none absolute inset-0 z-[3] bg-gradient-to-b from-transparent via-transparent to-[var(--bg)]" />
 
-        <div
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-          className="cursor-pointer py-4 grid grid-cols-1 grid-rows-1 w-full"
-        >
-          <AnimatePresence mode="wait">
-            {!isHovered ? (
-              <motion.h1
-                key={`text1-${lang}`}
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                className="col-start-1 row-start-1 text-5xl md:text-8xl font-extrabold tracking-tighter text-zinc-200 hover:text-white leading-none font-sans"
+      <div
+        className="relative z-20 flex w-full items-center py-16 md:py-20"
+        style={{ paddingLeft: "var(--page-x)", paddingRight: "var(--page-x)" }}
+      >
+        <div className="mx-auto w-full max-w-5xl 2xl:max-w-6xl">
+          <div className="max-w-2xl">
+            <motion.p
+              {...enter(0.08, 10)}
+              className="mb-4 font-mono text-[10px] tracking-[0.26em] text-[var(--text-faint)] sm:mb-5 sm:text-[11px] md:tracking-[0.32em]"
+            >
+              $ db.tviezy
+            </motion.p>
+
+            <motion.h1
+              {...enter(0.18, 26)}
+              className="max-w-[12ch] bg-gradient-to-br from-white via-[var(--text)] to-[var(--text-muted)] bg-clip-text text-[clamp(2.85rem,11vw,5.25rem)] font-semibold leading-[0.9] tracking-[-0.035em] text-transparent sm:text-[clamp(3.35rem,9vw,5.25rem)]"
+            >
+              {name}
+            </motion.h1>
+
+            <motion.p
+              {...enter(0.32, 12)}
+              className="mt-4 text-[12px] tracking-wide text-[var(--text-muted)] sm:mt-5 sm:text-sm md:text-[15px]"
+            >
+              {content.hero.text1 || "Motion · interface · visual systems"}
+            </motion.p>
+
+            <motion.div
+              initial={reduceMotion ? { scaleX: 1, opacity: 1 } : { scaleX: 0, opacity: 0.4 }}
+              animate={{ scaleX: 1, opacity: 1 }}
+              transition={reduceMotion ? { duration: 0 } : { duration: 0.9, delay: 0.4, ease }}
+              className="mt-5 h-px w-14 origin-left bg-gradient-to-r from-white/50 via-white/22 to-transparent sm:mt-6 sm:w-20"
+            />
+
+            <motion.div
+              {...enter(0.5, 10)}
+              className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3 sm:mt-10 sm:gap-x-6"
+            >
+              <a
+                href="#projects"
+                className="inline-flex min-h-10 items-center gap-2 text-[11px] tracking-[0.16em] text-[var(--text)] transition hover:text-[var(--text-muted)] sm:text-xs sm:tracking-[0.18em]"
               >
-                {renderLetters(t.text1)}
-              </motion.h1>
-            ) : (
-              <motion.h1
-                key={`text2-${lang}`}
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                className="col-start-1 row-start-1 text-5xl md:text-8xl font-extrabold tracking-tighter text-zinc-200 hover:text-white leading-none font-sans"
+                {content.hero.btn || (lang === "RU" ? "Работы" : "Work")}
+                <span aria-hidden className="animate-[heroBounce_1.6s_ease-in-out_infinite]">
+                  ↓
+                </span>
+              </a>
+              <a
+                href="#bio"
+                className="inline-flex min-h-10 items-center text-[11px] tracking-[0.16em] text-[var(--text-faint)] transition hover:text-[var(--text)] sm:text-xs sm:tracking-[0.18em]"
               >
-                {renderLetters(t.text2)}
-              </motion.h1>
-            )}
-          </AnimatePresence>
-        </div>
-
-        <p className="mt-6 text-sm md:text-base text-zinc-500 max-w-lg leading-relaxed">
-          {t.desc}
-        </p>
-
-        <div className="mt-12">
-          <a
-            href="#projects"
-            className="text-xs font-semibold uppercase tracking-wider text-zinc-400 hover:text-white border border-zinc-800 hover:border-zinc-500 bg-[#111113]/50 px-6 py-3.5 rounded-full transition-all duration-300"
-          >
-            {t.btn}
-          </a>
+                Bio
+              </a>
+              <a
+                href="#contact"
+                className="inline-flex min-h-10 items-center text-[11px] tracking-[0.16em] text-[var(--text-faint)] transition hover:text-[var(--text)] sm:text-xs sm:tracking-[0.18em]"
+              >
+                {lang === "RU" ? "Связаться" : "Contact"}
+              </a>
+            </motion.div>
+          </div>
         </div>
       </div>
     </section>

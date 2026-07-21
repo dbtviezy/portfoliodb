@@ -1,4 +1,9 @@
 import { prisma } from "@/lib/prisma";
+import { parseProjectLinks, type ProjectLink } from "@/lib/project-links";
+import {
+  resolveContactChannels,
+  type ContactChannel,
+} from "@/lib/contact-channels";
 
 export type LangCode = "en" | "ru";
 
@@ -8,7 +13,9 @@ export type ProjectItem = {
   category: string;
   year: string;
   description: string;
+  detail?: string;
   image: string;
+  links?: ProjectLink[];
   featured?: boolean;
   order?: number;
 };
@@ -52,10 +59,12 @@ export type PortfolioContent = {
     title1: string;
     title2: string;
     button: string;
+    channels: ContactChannel[];
     email: string;
     telegram: string;
     behance: string;
     dribbble: string;
+    instagram: string;
   };
 };
 
@@ -73,7 +82,7 @@ export async function getPortfolioContent(langInput: LangCode | "RU" | "EN"): Pr
     : (langInput as LangCode);
 
   const [portfolio, skills, expertise, projects] = await Promise.all([
-    prisma.portfolio.findUnique({ where: { lang } }),
+    prisma.portfolio.findFirst({ where: { lang } }),
     prisma.skill.findMany({ where: { lang }, orderBy: { order: "asc" } }),
     prisma.expertiseItem.findMany({ where: { lang }, orderBy: { order: "asc" } }),
     prisma.project.findMany({ where: { lang }, orderBy: { order: "asc" } }),
@@ -83,13 +92,15 @@ export async function getPortfolioContent(langInput: LangCode | "RU" | "EN"): Pr
     throw new Error(`Portfolio content for "${lang}" was not found`);
   }
 
-  const allItems = projects.map(({ id, title, category, year, description, image, featured, order }) => ({
+  const allItems = projects.map(({ id, title, category, year, description, detail, image, links, featured, order }) => ({
     id,
     title,
     category,
     year,
     description,
+    detail: detail || "",
     image,
+    links: parseProjectLinks(links),
     featured,
     order,
   }));
@@ -139,10 +150,18 @@ export async function getPortfolioContent(langInput: LangCode | "RU" | "EN"): Pr
       title1: portfolio.contactTitle1,
       title2: portfolio.contactTitle2,
       button: portfolio.contactBtn,
+      channels: resolveContactChannels(portfolio.contactChannels, {
+        email: portfolio.contactEmail,
+        telegram: portfolio.contactTelegram,
+        behance: portfolio.contactBehance,
+        dribbble: portfolio.contactDribbble,
+        instagram: portfolio.contactInstagram ?? "",
+      }),
       email: portfolio.contactEmail,
       telegram: portfolio.contactTelegram,
       behance: portfolio.contactBehance,
       dribbble: portfolio.contactDribbble,
+      instagram: portfolio.contactInstagram ?? "",
     },
   };
 }

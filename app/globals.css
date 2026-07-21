@@ -1,20 +1,164 @@
-@import "tailwindcss"; /* Или старый синтаксис: @tailwind base; @tailwind components; @tailwind utilities; */
+@import "tailwindcss";
 
-/* Базовые стили для всего сайта */
+/* ==========================================
+   DESIGN TOKENS — foundation for site redesign
+   Swap these values to restyle the whole product.
+   ========================================== */
+:root {
+  /* Charcoal / graphite — dark, never pure black */
+  --bg: #1c1d21;
+  --bg-soft: #24252a;
+  --bg-elevated: #2c2d33;
+  --bg-panel: #26272d;
+  --bg-panel-solid: #26272d;
+  --border: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --text: #e8e8ea;
+  --text-muted: #a3a3ab;
+  --text-faint: #75757e;
+  --accent: #e8e8ea;
+  --accent-fg: #1c1d21;
+  --danger: #f87171;
+  --success: #86efac;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --shadow-panel: 0 20px 50px rgba(0, 0, 0, 0.28);
+  --wave-fill: transparent;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --grad-page: radial-gradient(ellipse 90% 55% at 50% -10%, rgba(255, 255, 255, 0.045), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 100% 40%, rgba(110, 125, 160, 0.06), transparent 55%),
+    radial-gradient(ellipse 45% 35% at 0% 70%, rgba(255, 255, 255, 0.03), transparent 50%);
+  --grad-fade-b: linear-gradient(180deg, transparent, var(--bg));
+  --grad-line: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.18), transparent);
+  --grad-text: linear-gradient(135deg, #f2f2f4 0%, #e8e8ea 40%, #8a8a94 100%);
+
+  /* Responsive scale */
+  --page-x: 1.15rem;
+  --section-y: 3.25rem;
+  --hero-min: 78svh;
+  --carousel-h: min(68vw, 260px);
+  --nav-h: 4.25rem;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (min-width: 480px) {
+  :root {
+    --page-x: 1.5rem;
+    --carousel-h: 280px;
+    --hero-min: 80svh;
+  }
+}
+
+@media (min-width: 640px) {
+  :root {
+    --page-x: 2rem;
+    --section-y: 4rem;
+    --carousel-h: 300px;
+    --hero-min: 75svh;
+    --nav-h: 4rem;
+  }
+}
+
+@media (min-width: 768px) {
+  :root {
+    --page-x: 2.5rem;
+    --section-y: 5rem;
+    --carousel-h: 320px;
+    --hero-min: 78svh;
+    --nav-h: 5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --page-x: 4rem;
+    --section-y: 5.5rem;
+    --carousel-h: 340px;
+    --hero-min: 80svh;
+  }
+}
+
+@media (min-width: 1280px) {
+  :root {
+    --page-x: 5rem;
+    --carousel-h: 360px;
+    --hero-min: 82svh;
+  }
+}
+
+@media (min-width: 1536px) {
+  :root {
+    --carousel-h: 380px;
+    --hero-min: min(86svh, 920px);
+  }
+}
+
+/* Ultrawide: keep content denser vertically */
+@media (min-aspect-ratio: 21/9) {
+  :root {
+    --hero-min: min(78svh, 780px);
+    --carousel-h: min(38vh, 340px);
+  }
+}
+
 html,
 body {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  /* Убираем жесткий фон, чтобы сквозь body просвечивал наш холст */
-  background-color: transparent !important; 
-  color: #ededed;
+  background-color: var(--bg);
+  background-image: var(--grad-page);
+  background-attachment: fixed;
+  color: var(--text);
 }
 
-/* На всякий случай гарантируем, что самый первый корневой div тоже прозрачный */
-#__next, 
+#__next,
 body > div:first-child {
-  background-color: transparent !important;
+  background-color: transparent;
+}
+
+@keyframes heroGlow {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translate3d(24px, 18px, 0);
+    opacity: 0.55;
+  }
+}
+
+@keyframes heroGlowAlt {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.25;
+  }
+  50% {
+    transform: translate3d(-18px, -14px, 0);
+    opacity: 0.42;
+  }
+}
+
+@keyframes heroBounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-\[heroGlow_16s_ease-in-out_infinite\],
+  .animate-\[heroGlowAlt_20s_ease-in-out_infinite\],
+  .animate-\[heroBounce_1\.6s_ease-in-out_infinite\] {
+    animation: none !important;
+  }
 }
 
 /* ==========================================
@@ -22,11 +166,11 @@ body > div:first-child {
    ========================================== */
 ::-webkit-scrollbar {
   width: 14px;
-  background-color: #0a0a0a;
+  background-color: var(--bg);
 }
 
 ::-webkit-scrollbar-track {
-  background-color: #0a0a0a;
+  background-color: var(--bg);
 }
 
 ::-webkit-scrollbar-button {
@@ -39,11 +183,11 @@ body > div:first-child {
   background-color: rgba(255, 255, 255, 0.3);
   background-clip: padding-box;
   border-radius: 9999px;
-  border-left: 6px solid #0a0a0a;
-  border-right: 6px solid #0a0a0a;
-  border-top: 12px solid #0a0a0a;
-  border-bottom: 12px solid #0a0a0a;
-  transition: 
+  border-left: 6px solid var(--bg);
+  border-right: 6px solid var(--bg);
+  border-top: 12px solid var(--bg);
+  border-bottom: 12px solid var(--bg);
+  transition:
     border-width 0.4s cubic-bezier(0.16, 1, 0.3, 1),
     background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }

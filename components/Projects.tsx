@@ -1,74 +1,223 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
 import { useContent } from "@/components/ContentProvider";
+import ProjectModal from "@/components/ProjectModal";
+import type { ProjectItem } from "@/lib/content";
 
 interface ProjectsProps {
   lang: "RU" | "EN";
 }
 
+const ease = [0.22, 1, 0.36, 1] as const;
+
 const Projects = memo(function Projects({ lang }: ProjectsProps) {
   const { content } = useContent();
-  const t = content.projects;
-  const projects = t.featured;
+  const projects = content.projects.featured.length > 0 ? content.projects.featured : content.projects.allItems;
+  const [index, setIndex] = useState(0);
+  const [direction, setDirection] = useState(1);
+  const [selected, setSelected] = useState<ProjectItem | null>(null);
+  const touchX = useRef<number | null>(null);
+
+  const count = projects.length;
+  const active = count > 0 ? projects[index % count] : null;
+  const prev = count > 1 ? projects[(index - 1 + count) % count] : null;
+  const next = count > 1 ? projects[(index + 1) % count] : null;
+
+  const goTo = useCallback(
+    (targetIndex: number, dir: 1 | -1) => {
+      if (count < 2) return;
+      setDirection(dir);
+      setIndex(((targetIndex % count) + count) % count);
+    },
+    [count]
+  );
+
+  const goNext = useCallback(() => goTo(index + 1, 1), [goTo, index]);
+  const goPrev = useCallback(() => goTo(index - 1, -1), [goTo, index]);
+
+  useEffect(() => {
+    setIndex(0);
+  }, [projects.length]);
+
+  if (!active) return null;
 
   return (
-    <section id="projects" className="py-20 px-10 md:px-20 bg-[#0a0a0a]">
-      <div className="flex justify-between items-baseline border-b border-zinc-800 pb-6 mb-12">
-        <h2 className="text-sm font-semibold tracking-widest text-zinc-400 uppercase">
-          {t.title}
-        </h2>
-        <span className="text-xs text-zinc-500">
-          {t.showing} {projects.length} {t.of} {t.allItems.length}
-        </span>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-16">
-        {projects.map((project, index) => (
-          <div key={project.id ?? index} className="group block cursor-pointer">
-            <div className="overflow-hidden rounded-2xl bg-zinc-900 border border-zinc-800/50 aspect-[16/10] mb-6">
-              <img
-                src={project.image}
-                alt={project.title}
-                className="w-full h-full object-cover grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700 ease-out"
-              />
-            </div>
-
-            <div className="flex justify-between items-start mb-2">
-              <h3 className="text-2xl font-semibold text-white tracking-tight group-hover:text-zinc-300 transition-colors">
-                {project.title}
-              </h3>
-              <span className="text-sm text-zinc-500 font-mono">{project.year}</span>
-            </div>
-
-            <p className="text-sm text-zinc-400 mb-2">{project.category}</p>
-
-            <p className="text-sm text-zinc-500 leading-relaxed max-w-md">
-              {project.description}
+    <section
+      id="projects"
+      className="relative z-20 overflow-hidden pb-[calc(var(--section-y)*0.65)] pt-1 sm:pt-2"
+      style={{ paddingLeft: "var(--page-x)", paddingRight: "var(--page-x)" }}
+    >
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-[radial-gradient(ellipse_70%_100%_at_50%_0%,rgba(255,255,255,0.04),transparent)]"
+      />
+      <div className="relative mx-auto w-full max-w-5xl 2xl:max-w-6xl">
+        <div className="mb-3 flex items-end justify-between gap-3 sm:mb-4">
+          <div className="min-w-0">
+            <h2 className="text-[12px] font-medium tracking-[0.14em] text-[var(--text-faint)] sm:text-[13px]">
+              {lang === "RU" ? "Работы" : "Work"}
+            </h2>
+            <p className="mt-0.5 text-[10px] text-[var(--text-faint)]/80 sm:text-[11px]">
+              {index + 1} / {count}
             </p>
           </div>
-        ))}
+
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+            <button
+              type="button"
+              onClick={goPrev}
+              disabled={count < 2}
+              aria-label={lang === "RU" ? "Предыдущий" : "Previous"}
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] text-[var(--text-muted)] transition hover:border-[var(--border-strong)] hover:text-[var(--text)] disabled:opacity-30 sm:h-9 sm:w-9"
+            >
+              ←
+            </button>
+            <button
+              type="button"
+              onClick={goNext}
+              disabled={count < 2}
+              aria-label={lang === "RU" ? "Следующий" : "Next"}
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] text-[var(--text-muted)] transition hover:border-[var(--border-strong)] hover:text-[var(--text)] disabled:opacity-30 sm:h-9 sm:w-9"
+            >
+              →
+            </button>
+            <Link
+              href="/projects"
+              className="ml-1 hidden text-[11px] text-[var(--text-faint)] transition hover:text-[var(--text)] sm:inline"
+            >
+              {lang === "RU" ? "Все" : "All"}
+            </Link>
+          </div>
+        </div>
+
+        <div
+          className="relative w-full touch-pan-y [perspective:1200px]"
+          style={{ height: "var(--carousel-h)" }}
+          onTouchStart={(e) => {
+            touchX.current = e.changedTouches[0]?.clientX ?? null;
+          }}
+          onTouchEnd={(e) => {
+            if (touchX.current == null) return;
+            const dx = (e.changedTouches[0]?.clientX ?? 0) - touchX.current;
+            touchX.current = null;
+            if (Math.abs(dx) < 40) return;
+            if (dx < 0) goNext();
+            else goPrev();
+          }}
+        >
+          {/* Previous — left, muted blur */}
+          {prev && (
+            <button
+              type="button"
+              onClick={goPrev}
+              aria-label={lang === "RU" ? `Показать ${prev.title}` : `Show ${prev.title}`}
+              className="absolute left-0 top-[10%] z-[1] h-[80%] w-[42%] cursor-pointer overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg-elevated)] outline-none sm:w-[36%]"
+            >
+              <motion.div
+                key={`prev-${prev.id ?? (index - 1 + count) % count}`}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 0.75, x: 0 }}
+                transition={{ duration: 0.4, ease }}
+                className="h-full w-full scale-95 grayscale blur-[3px] sm:blur-[5px]"
+              >
+                <img
+                  src={prev.image}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                  draggable={false}
+                />
+              </motion.div>
+            </button>
+          )}
+
+          {/* Next — right, muted blur */}
+          {next && (
+            <button
+              type="button"
+              onClick={goNext}
+              aria-label={lang === "RU" ? `Показать ${next.title}` : `Show ${next.title}`}
+              className="absolute right-0 top-[10%] z-[1] h-[80%] w-[42%] cursor-pointer overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg-elevated)] outline-none sm:w-[36%]"
+            >
+              <motion.div
+                key={`next-${next.id ?? (index + 1) % count}`}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 0.75, x: 0 }}
+                transition={{ duration: 0.4, ease }}
+                className="h-full w-full scale-95 grayscale blur-[3px] sm:blur-[5px]"
+              >
+                <img
+                  src={next.image}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                  draggable={false}
+                />
+              </motion.div>
+            </button>
+          )}
+
+          {/* Active — front, color, 3D flip, opens modal */}
+          <AnimatePresence mode="wait" custom={direction}>
+            <motion.button
+              key={`active-${active.id ?? index}`}
+              type="button"
+              custom={direction}
+              onClick={() => setSelected(active)}
+              initial={{
+                opacity: 0,
+                x: direction > 0 ? 56 : -56,
+                rotateY: direction > 0 ? 16 : -16,
+                filter: "blur(8px) grayscale(1)",
+              }}
+              animate={{
+                opacity: 1,
+                x: 0,
+                rotateY: 0,
+                filter: "blur(0px) grayscale(0)",
+              }}
+              exit={{
+                opacity: 0,
+                x: direction > 0 ? -64 : 64,
+                rotateY: direction > 0 ? -24 : 24,
+                filter: "blur(6px) grayscale(1)",
+                transition: { duration: 0.32, ease },
+              }}
+              transition={{ duration: 0.45, ease }}
+              className="absolute left-[14%] top-0 z-10 h-full w-[72%] cursor-pointer overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg-elevated)] text-left shadow-[var(--shadow-panel)] outline-none [transform-style:preserve-3d] hover:border-[var(--border-strong)] focus-visible:ring-1 focus-visible:ring-white/30 sm:left-[21%] sm:w-[58%] md:left-[24%] md:w-[52%]"
+            >
+              <img
+                src={active.image}
+                alt={active.title}
+                className="h-full w-full object-cover"
+                draggable={false}
+              />
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent px-3.5 pb-3.5 pt-12 sm:p-4 sm:pt-16 md:p-5">
+                <h3 className="truncate text-[15px] font-semibold tracking-tight text-white sm:text-lg md:text-xl">
+                  {active.title}
+                </h3>
+                <p className="mt-0.5 truncate text-[10px] text-white/65 sm:text-xs">
+                  {active.category} · {active.year}
+                </p>
+              </div>
+            </motion.button>
+          </AnimatePresence>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between gap-3 sm:hidden">
+          <p className="text-[11px] text-[var(--text-faint)]">
+            {lang === "RU" ? "Свайп для листания" : "Swipe to browse"}
+          </p>
+          <Link href="/projects" className="text-[11px] text-[var(--text-faint)]">
+            {lang === "RU" ? "Все" : "All"}
+          </Link>
+        </div>
       </div>
 
-      <div className="flex justify-center">
-        <Link
-          href="/projects"
-          className="text-xs font-semibold uppercase tracking-wider text-zinc-400 hover:text-white border border-zinc-800 hover:border-zinc-500 bg-[#111113]/50 px-8 py-4 rounded-full transition-all duration-300 hover:bg-[#111113] flex items-center gap-2 group"
-        >
-          {t.viewAll}
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={2}
-            stroke="currentColor"
-            className="w-4 h-4 group-hover:translate-x-1 transition-transform"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-          </svg>
-        </Link>
-      </div>
+      <ProjectModal project={selected} lang={lang} onClose={() => setSelected(null)} />
     </section>
   );
 });

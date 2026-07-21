@@ -4,13 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "db:generate": "prisma generate",
-    "db:push": "prisma db push",
-    "db:seed": "prisma db seed",
-    "db:setup": "prisma generate && prisma db push && prisma db seed"
+    "db:push": "dotenv -e .env.example -- prisma db push",
+    "db:seed": "dotenv -e .env.example -e .env -- prisma db seed",
+    "db:setup": "npm run db:generate && npm run db:push && npm run db:seed",
+    "admin:reset": "dotenv -e .env.example -e .env -- npx tsx scripts/reset-admin.ts",
+    "postinstall": "prisma generate"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
@@ -20,6 +22,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "bcryptjs": "^3.0.3",
     "framer-motion": "^12.42.2",
+    "jose": "^6.2.3",
     "jsonwebtoken": "^9.0.3",
     "next": "16.2.10",
     "prisma": "^5.22.0",
@@ -31,9 +34,12 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.4.2",
+    "dotenv-cli": "^8.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
     "tailwindcss": "^4",
+    "tsx": "^4.23.1",
     "typescript": "^5"
   }
 }

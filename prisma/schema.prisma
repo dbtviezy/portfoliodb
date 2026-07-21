@@ -42,6 +42,8 @@ model Portfolio {
   contactTelegram  String   @default("")
   contactBehance   String   @default("")
   contactDribbble  String   @default("")
+  contactInstagram String   @default("")
+  contactChannels  String   @default("[]")
   navbarProjects   String   @default("Projects")
   navbarContact    String   @default("Contact")
   skillsTitle      String   @default("SKILLS & TOOLS")
@@ -80,7 +82,9 @@ model Project {
   category    String
   year        String
   description String
+  detail      String   @default("")
   image       String
+  links       String   @default("[]")
   featured    Boolean  @default(false)
   order       Int      @default(0)
   lang        String   @default("en")

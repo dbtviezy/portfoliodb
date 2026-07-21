@@ -2,6 +2,13 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getPortfolioContent, toLangCode, type LangCode } from "@/lib/content";
 import { isUnauthorized, requireAdminSession } from "@/lib/api-auth";
+import {
+  legacyFieldsFromChannels,
+  parseContactChannels,
+  resolveContactChannels,
+  serializeContactChannels,
+  type ContactChannel,
+} from "@/lib/contact-channels";
 
 type PortfolioPayload = {
   lang?: LangCode;
@@ -29,6 +36,8 @@ type PortfolioPayload = {
   contactTelegram?: string;
   contactBehance?: string;
   contactDribbble?: string;
+  contactInstagram?: string;
+  contactChannels?: ContactChannel[] | string;
   navbarProjects?: string;
   navbarContact?: string;
   skillsTitle?: string;
@@ -46,15 +55,27 @@ async function syncListItems(
   model: "skill" | "expertise",
   items: string[]
 ) {
-  const table = model === "skill" ? prisma.skill : prisma.expertiseItem;
+  if (model === "skill") {
+    await prisma.skill.deleteMany({ where: { lang } });
+    const cleaned = items.map((name) => name.trim()).filter(Boolean);
+    if (cleaned.length === 0) return;
+    await prisma.skill.createMany({
+      data: cleaned.map((name, index) => ({
+        lang,
+        name,
+        order: index,
+      })),
+    });
+    return;
+  }
 
-  await table.deleteMany({ where: { lang } });
-  if (items.length === 0) return;
-
-  await table.createMany({
-    data: items.map((name, index) => ({
+  await prisma.expertiseItem.deleteMany({ where: { lang } });
+  const cleaned = items.map((name) => name.trim()).filter(Boolean);
+  if (cleaned.length === 0) return;
+  await prisma.expertiseItem.createMany({
+    data: cleaned.map((name, index) => ({
       lang,
-      name: name.trim(),
+      name,
       order: index,
     })),
   });
@@ -83,6 +104,40 @@ export async function PUT(request: Request) {
     const body = (await request.json()) as PortfolioPayload;
     const lang = toLangCode(body.lang ?? "en");
 
+    const current = await prisma.portfolio.findFirst({ where: { lang } });
+    const existingLegacy = {
+      email: current?.contactEmail ?? "",
+      telegram: current?.contactTelegram ?? "",
+      behance: current?.contactBehance ?? "",
+      dribbble: current?.contactDribbble ?? "",
+      instagram: current?.contactInstagram ?? "",
+    };
+    const bodyLegacy = {
+      email: body.contactEmail ?? existingLegacy.email,
+      telegram: body.contactTelegram ?? existingLegacy.telegram,
+      behance: body.contactBehance ?? existingLegacy.behance,
+      dribbble: body.contactDribbble ?? existingLegacy.dribbble,
+      instagram: body.contactInstagram ?? existingLegacy.instagram,
+    };
+
+    let contactChannelsValue: string | undefined;
+    let syncedLegacy = bodyLegacy;
+    if (body.contactChannels !== undefined) {
+      const incoming =
+        typeof body.contactChannels === "string"
+          ? parseContactChannels(body.contactChannels)
+          : body.contactChannels;
+      const resolved = resolveContactChannels(incoming, {
+        ...existingLegacy,
+        ...bodyLegacy,
+      });
+      contactChannelsValue = serializeContactChannels(resolved);
+      syncedLegacy = legacyFieldsFromChannels(resolved, {
+        ...existingLegacy,
+        ...bodyLegacy,
+      });
+    }
+
     const data = {
       heroLocation: body.heroLocation,
       heroText1: body.heroText1,
@@ -104,10 +159,12 @@ export async function PUT(request: Request) {
       contactTitle1: body.contactTitle1,
       contactTitle2: body.contactTitle2,
       contactBtn: body.contactBtn,
-      contactEmail: body.contactEmail,
-      contactTelegram: body.contactTelegram,
-      contactBehance: body.contactBehance,
-      contactDribbble: body.contactDribbble,
+      contactEmail: syncedLegacy.email,
+      contactTelegram: syncedLegacy.telegram,
+      contactBehance: syncedLegacy.behance,
+      contactDribbble: syncedLegacy.dribbble,
+      contactInstagram: syncedLegacy.instagram,
+      contactChannels: contactChannelsValue,
       navbarProjects: body.navbarProjects,
       navbarContact: body.navbarContact,
       skillsTitle: body.skillsTitle,
@@ -122,11 +179,16 @@ export async function PUT(request: Request) {
       Object.entries(data).filter(([, value]) => value !== undefined)
     );
 
-    await prisma.portfolio.upsert({
-      where: { lang },
-      create: { lang, ...cleaned },
-      update: cleaned,
-    });
+    if (current) {
+      await prisma.portfolio.update({
+        where: { id: current.id },
+        data: cleaned,
+      });
+    } else {
+      await prisma.portfolio.create({
+        data: { lang, ...cleaned },
+      });
+    }
 
     if (body.skills) {
       await syncListItems(lang, "skill", body.skills);

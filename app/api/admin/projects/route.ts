@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { toLangCode, type LangCode } from "@/lib/content";
 import { isUnauthorized, requireAdminSession } from "@/lib/api-auth";
+import { serializeProjectLinks, type ProjectLink } from "@/lib/project-links";
 
 type ProjectPayload = {
   lang?: LangCode;
@@ -9,7 +10,9 @@ type ProjectPayload = {
   category?: string;
   year?: string;
   description?: string;
+  detail?: string;
   image?: string;
+  links?: ProjectLink[];
   featured?: boolean;
   order?: number;
 };
@@ -50,7 +53,9 @@ export async function POST(request: Request) {
         category: body.category,
         year: body.year,
         description: body.description,
+        detail: body.detail ?? "",
         image: body.image,
+        links: serializeProjectLinks(body.links),
         featured: body.featured ?? false,
         order: body.order ?? count,
       },

@@ -1,19 +1,36 @@
+"use client";
+
 import { Suspense } from "react";
+import Link from "next/link";
 import LoginForm from "@/components/admin/LoginForm";
+import { StudioPanel } from "@/components/admin/studio-ui";
 
 export default function StudioLoginPage() {
   return (
-    <main className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center px-6">
-      <div className="w-full max-w-md rounded-3xl border border-zinc-800 bg-[#111113] p-8 shadow-2xl">
-        <p className="text-xs uppercase tracking-[0.3em] text-zinc-500 mb-3">Hidden access</p>
-        <h1 className="text-3xl font-bold tracking-tight mb-2">Studio</h1>
-        <p className="text-sm text-zinc-400 mb-8">
-          Войдите, чтобы редактировать портфолио. Эта страница не связана с публичным сайтом.
+    <main className="relative flex min-h-screen items-center justify-center px-6 py-16">
+      <div className="absolute left-6 top-6 z-20 md:left-10 md:top-8">
+        <Link
+          href="/"
+          className="text-sm text-[var(--text-muted)] transition hover:text-[var(--text)]"
+        >
+          ← Portfolio
+        </Link>
+      </div>
+
+      <StudioPanel className="relative z-10 w-full max-w-[400px]">
+        <p className="mb-2 text-xs font-medium tracking-wide text-[var(--text-faint)]">
+          Studio
         </p>
-        <Suspense fallback={<div className="text-zinc-500 text-sm">Loading...</div>}>
+        <h1 className="mb-2 text-2xl font-semibold tracking-tight text-[var(--text)]">
+          Sign in
+        </h1>
+        <p className="mb-7 text-sm leading-relaxed text-[var(--text-muted)]">
+          Кабинет для редактирования портфолио.
+        </p>
+        <Suspense fallback={<div className="text-sm text-[var(--text-faint)]">Loading...</div>}>
           <LoginForm />
         </Suspense>
-      </div>
+      </StudioPanel>
     </main>
   );
 }

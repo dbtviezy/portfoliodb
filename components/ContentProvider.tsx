@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { PortfolioContent } from "@/lib/content";
+import { channelsFromLegacy } from "@/lib/contact-channels";
 import ruFallback from "@/locales/ru.json";
 import enFallback from "@/locales/en.json";
 
@@ -18,18 +19,36 @@ const ContentContext = createContext<ContentContextValue | null>(null);
 
 function fallbackContent(lang: Lang): PortfolioContent {
   const source = lang === "RU" ? ruFallback : enFallback;
+  const mapProjects = (items: typeof source.projects.allItems) =>
+    items.map((item) => ({
+      ...item,
+      detail: "",
+      links: [] as { label: string; url: string }[],
+    }));
+
+  const email = "daniilbautin0@gmail.com";
+  const telegram = "@dbtviezy";
+  const behance = "behance.net/3606019f";
+  const dribbble = "dribbble.com/db-tviezy";
+
   return {
     navbar: source.navbar,
     hero: source.hero,
     about: source.about,
-    projects: source.projects,
+    projects: {
+      ...source.projects,
+      featured: mapProjects(source.projects.featured),
+      allItems: mapProjects(source.projects.allItems),
+    },
     skills: source.skills,
     contact: {
       ...source.contact,
-      email: "daniilbautin0@gmail.com",
-      telegram: "@dbtviezy",
-      behance: "behance.net/3606019f",
-      dribbble: "dribbble.com/db-tviezy",
+      email,
+      telegram,
+      behance,
+      dribbble,
+      instagram: "",
+      channels: channelsFromLegacy({ email, telegram, behance, dribbble, instagram: "" }),
     },
   };
 }

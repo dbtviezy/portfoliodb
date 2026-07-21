@@ -1,119 +1,68 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
 import type { PortfolioContent, ProjectItem } from "@/lib/content";
+import { parseProjectLinks } from "@/lib/project-links";
+import type { ContactChannel } from "@/lib/contact-channels";
+import {
+  channelsFromLegacy,
+  legacyFieldsFromChannels,
+  resolveContactChannels,
+} from "@/lib/contact-channels";
+import {
+  StudioButton,
+  StudioField,
+  StudioInput,
+  StudioLabel,
+  StudioPanel,
+} from "@/components/admin/studio-ui";
 
 type AdminLang = "en" | "ru";
 
 const tabs = [
-  { id: "hero", label: "Hero" },
-  { id: "about", label: "Bio" },
-  { id: "projects", label: "Projects" },
-  { id: "skills", label: "Skills" },
-  { id: "contact", label: "Contact" },
+  { id: "card", label: "Card" },
+  { id: "projects", label: "Work" },
+  { id: "contact", label: "Reach" },
   { id: "labels", label: "Labels" },
 ] as const;
 
 type TabId = (typeof tabs)[number]["id"];
-
-function Field({
-  label,
-  value,
-  onChange,
-  multiline = false,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  multiline?: boolean;
-}) {
-  const className =
-    "w-full rounded-xl bg-zinc-900 border border-zinc-800 px-4 py-3 text-white outline-none focus:border-zinc-500";
-
-  return (
-    <label className="block">
-      <span className="block text-xs uppercase tracking-widest text-zinc-500 mb-2">{label}</span>
-      {multiline ? (
-        <textarea
-          rows={4}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className={className}
-        />
-      ) : (
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className={className}
-        />
-      )}
-    </label>
-  );
-}
-
-function ListEditor({
-  label,
-  items,
-  onChange,
-}: {
-  label: string;
-  items: string[];
-  onChange: (items: string[]) => void;
-}) {
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-xs uppercase tracking-widest text-zinc-500">{label}</span>
-        <button
-          type="button"
-          onClick={() => onChange([...items, ""])}
-          className="text-xs text-zinc-300 hover:text-white"
-        >
-          + Add
-        </button>
-      </div>
-      <div className="space-y-2">
-        {items.map((item, index) => (
-          <div key={index} className="flex gap-2">
-            <input
-              type="text"
-              value={item}
-              onChange={(e) => {
-                const next = [...items];
-                next[index] = e.target.value;
-                onChange(next);
-              }}
-              className="flex-1 rounded-xl bg-zinc-900 border border-zinc-800 px-4 py-2 text-white outline-none focus:border-zinc-500"
-            />
-            <button
-              type="button"
-              onClick={() => onChange(items.filter((_, i) => i !== index))}
-              className="px-3 rounded-xl border border-zinc-800 text-zinc-400 hover:text-red-300"
-            >
-              ×
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 const emptyProject: ProjectItem = {
   title: "",
   category: "",
   year: new Date().getFullYear().toString(),
   description: "",
+  detail: "",
   image: "",
+  links: [],
   featured: false,
 };
+
+function normalizeAdminProject(raw: Record<string, unknown>): ProjectItem {
+  return {
+    id: typeof raw.id === "number" ? raw.id : undefined,
+    title: String(raw.title ?? ""),
+    category: String(raw.category ?? ""),
+    year: String(raw.year ?? ""),
+    description: String(raw.description ?? ""),
+    detail: String(raw.detail ?? ""),
+    image: String(raw.image ?? ""),
+    featured: Boolean(raw.featured),
+    order: typeof raw.order === "number" ? raw.order : 0,
+    links: Array.isArray(raw.links)
+      ? (raw.links as ProjectItem["links"])
+      : parseProjectLinks(typeof raw.links === "string" ? raw.links : "[]"),
+  };
+}
 
 export default function AdminDashboard() {
   const router = useRouter();
   const [lang, setLang] = useState<AdminLang>("en");
-  const [tab, setTab] = useState<TabId>("hero");
+  const [tab, setTab] = useState<TabId>("card");
   const [content, setContent] = useState<PortfolioContent | null>(null);
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -122,6 +71,9 @@ export default function AdminDashboard() {
   const [email, setEmail] = useState("");
   const [editingProject, setEditingProject] = useState<ProjectItem | null>(null);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const currentProject = editingProject;
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -133,6 +85,8 @@ export default function AdminDashboard() {
       ]);
 
       if (!meRes.ok) {
+        // Clear a stale/invalid cookie so middleware and login don't fight.
+        await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
         router.replace("/studio");
         return;
       }
@@ -141,11 +95,17 @@ export default function AdminDashboard() {
       setEmail(me.email);
 
       if (portfolioRes.ok) {
-        setContent(await portfolioRes.json());
+        const data = (await portfolioRes.json()) as PortfolioContent;
+        const channels = resolveContactChannels(data.contact.channels, data.contact);
+        setContent({
+          ...data,
+          contact: { ...data.contact, channels },
+        });
       }
 
       if (projectsRes.ok) {
-        setProjects(await projectsRes.json());
+        const rows = await projectsRes.json();
+        setProjects((rows as Record<string, unknown>[]).map(normalizeAdminProject));
       }
     } finally {
       setLoading(false);
@@ -156,47 +116,74 @@ export default function AdminDashboard() {
     loadData();
   }, [loadData]);
 
-  async function savePortfolio(partial?: Partial<PortfolioContent>) {
+  const closeProjectEditor = useCallback(() => {
+    setEditingProject(null);
+    setIsCreatingProject(false);
+  }, []);
+
+  useEffect(() => {
+    if (!editingProject && !isCreatingProject) return;
+
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeProjectEditor();
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [editingProject, isCreatingProject, closeProjectEditor]);
+
+  async function savePortfolio() {
     if (!content) return;
     setSaving(true);
     setMessage("");
 
+    const channels = resolveContactChannels(content.contact.channels, content.contact);
+    const legacy = legacyFieldsFromChannels(channels, content.contact);
+
     const payload = {
       lang,
-      heroLocation: partial?.hero?.location ?? content.hero.location,
-      heroText1: partial?.hero?.text1 ?? content.hero.text1,
-      heroText2: partial?.hero?.text2 ?? content.hero.text2,
-      heroDesc: partial?.hero?.desc ?? content.hero.desc,
-      heroBtn: partial?.hero?.btn ?? content.hero.btn,
-      aboutTitle: partial?.about?.title ?? content.about.title,
-      aboutDesc1: partial?.about?.desc1 ?? content.about.desc1,
-      aboutDesc2: partial?.about?.desc2 ?? content.about.desc2,
-      aboutExpertise: partial?.about?.expertise ?? content.about.expertise,
-      profileImage: partial?.about?.profileImage ?? content.about.profileImage,
-      aboutStats1Value: partial?.about?.stats?.[0]?.value ?? content.about.stats[0].value,
-      aboutStats1Label: partial?.about?.stats?.[0]?.label ?? content.about.stats[0].label,
-      aboutStats2Value: partial?.about?.stats?.[1]?.value ?? content.about.stats[1].value,
-      aboutStats2Label: partial?.about?.stats?.[1]?.label ?? content.about.stats[1].label,
-      aboutStats3Value: partial?.about?.stats?.[2]?.value ?? content.about.stats[2].value,
-      aboutStats3Label: partial?.about?.stats?.[2]?.label ?? content.about.stats[2].label,
-      contactSubtitle: partial?.contact?.subtitle ?? content.contact.subtitle,
-      contactTitle1: partial?.contact?.title1 ?? content.contact.title1,
-      contactTitle2: partial?.contact?.title2 ?? content.contact.title2,
-      contactBtn: partial?.contact?.button ?? content.contact.button,
-      contactEmail: partial?.contact?.email ?? content.contact.email,
-      contactTelegram: partial?.contact?.telegram ?? content.contact.telegram,
-      contactBehance: partial?.contact?.behance ?? content.contact.behance,
-      contactDribbble: partial?.contact?.dribbble ?? content.contact.dribbble,
-      navbarProjects: partial?.navbar?.projects ?? content.navbar.projects,
-      navbarContact: partial?.navbar?.contact ?? content.navbar.contact,
-      skillsTitle: partial?.skills?.title ?? content.skills.title,
-      projectsTitle: partial?.projects?.title ?? content.projects.title,
-      projectsShowing: partial?.projects?.showing ?? content.projects.showing,
-      projectsOf: partial?.projects?.of ?? content.projects.of,
-      projectsViewAll: partial?.projects?.viewAll ?? content.projects.viewAll,
-      projectsAllTitle: partial?.projects?.allTitle ?? content.projects.allTitle,
-      skills: partial?.skills?.items ?? content.skills.items,
-      expertiseItems: partial?.about?.expertiseItems ?? content.about.expertiseItems,
+      heroLocation: content.hero.location,
+      heroText1: content.hero.text1,
+      heroText2: content.hero.text2,
+      heroDesc: content.hero.desc,
+      heroBtn: content.hero.btn,
+      aboutTitle: content.about.title,
+      aboutDesc1: content.about.desc1,
+      aboutDesc2: content.about.desc2,
+      aboutExpertise: content.about.expertise,
+      profileImage: content.about.profileImage,
+      aboutStats1Value: content.about.stats[0].value,
+      aboutStats1Label: content.about.stats[0].label,
+      aboutStats2Value: content.about.stats[1].value,
+      aboutStats2Label: content.about.stats[1].label,
+      aboutStats3Value: content.about.stats[2].value,
+      aboutStats3Label: content.about.stats[2].label,
+      contactSubtitle: content.contact.subtitle,
+      contactTitle1: content.contact.title1,
+      contactTitle2: content.contact.title2,
+      contactBtn: content.contact.button,
+      contactChannels: channels,
+      contactEmail: legacy.email,
+      contactTelegram: legacy.telegram,
+      contactBehance: legacy.behance,
+      contactDribbble: legacy.dribbble,
+      contactInstagram: legacy.instagram,
+      navbarProjects: content.navbar.projects,
+      navbarContact: content.navbar.contact,
+      skillsTitle: content.skills.title,
+      projectsTitle: content.projects.title,
+      projectsShowing: content.projects.showing,
+      projectsOf: content.projects.of,
+      projectsViewAll: content.projects.viewAll,
+      projectsAllTitle: content.projects.allTitle,
+      skills: content.skills.items,
+      expertiseItems: content.about.expertiseItems,
     };
 
     try {
@@ -207,8 +194,12 @@ export default function AdminDashboard() {
       });
 
       if (!response.ok) throw new Error("Save failed");
-      const updated = await response.json();
-      setContent(updated);
+      const saved = (await response.json()) as PortfolioContent;
+      const savedChannels = resolveContactChannels(saved.contact.channels, saved.contact);
+      setContent({
+        ...saved,
+        contact: { ...saved.contact, channels: savedChannels },
+      });
       setMessage("Saved");
     } catch {
       setMessage("Failed to save");
@@ -218,9 +209,15 @@ export default function AdminDashboard() {
   }
 
   async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.replace("/studio");
-    router.refresh();
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      router.replace("/studio");
+      router.refresh();
+    } catch {
+      setLoggingOut(false);
+    }
   }
 
   async function saveProject(project: ProjectItem) {
@@ -265,63 +262,73 @@ export default function AdminDashboard() {
     }
   }
 
-  const currentProject = useMemo(
-    () => (isCreatingProject ? emptyProject : editingProject),
-    [editingProject, isCreatingProject]
-  );
-
   if (loading || !content) {
     return (
-      <main className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center">
-        <p className="text-zinc-500">Loading studio...</p>
+      <main className="flex min-h-screen items-center justify-center">
+        <p className="text-sm text-[var(--text-faint)]">Loading studio...</p>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[#0a0a0a] text-white">
-      <header className="border-b border-zinc-900 px-6 md:px-10 py-5 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-zinc-500">Studio</p>
-          <h1 className="text-2xl font-bold">Portfolio editor</h1>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex rounded-full border border-zinc-800 p-1">
-            {(["en", "ru"] as AdminLang[]).map((code) => (
-              <button
-                key={code}
-                type="button"
-                onClick={() => setLang(code)}
-                className={`px-4 py-1.5 rounded-full text-xs font-semibold uppercase ${
-                  lang === code ? "bg-white text-black" : "text-zinc-400"
-                }`}
-              >
-                {code}
-              </button>
-            ))}
+    <main className="min-h-screen">
+      <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--bg)]/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-4 md:px-10">
+          <div className="flex items-center gap-5">
+            <div>
+              <p className="text-xs text-[var(--text-faint)]">Studio</p>
+              <h1 className="text-base font-semibold tracking-tight md:text-lg">Calling card</h1>
+            </div>
+            <Link
+              href="/"
+              className="hidden text-sm text-[var(--text-muted)] transition hover:text-[var(--text)] sm:inline"
+            >
+              View site →
+            </Link>
           </div>
-          <span className="text-xs text-zinc-500 hidden sm:inline">{email}</span>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="text-xs uppercase tracking-widest text-zinc-400 hover:text-white"
-          >
-            Logout
-          </button>
+
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <div className="flex rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-soft)] p-0.5">
+              {(["en", "ru"] as AdminLang[]).map((code) => (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => setLang(code)}
+                  className={`rounded-[calc(var(--radius-md)-2px)] px-3 py-1 text-xs font-semibold uppercase tracking-wide transition ${
+                    lang === code
+                      ? "bg-[var(--accent)] text-[var(--accent-fg)]"
+                      : "text-[var(--text-faint)] hover:text-[var(--text)]"
+                  }`}
+                >
+                  {code}
+                </button>
+              ))}
+            </div>
+            <span className="hidden text-xs text-[var(--text-faint)] md:inline">{email}</span>
+            <Link
+              href="/"
+              className="text-sm text-[var(--text-muted)] transition hover:text-[var(--text)] sm:hidden"
+            >
+              Site
+            </Link>
+            <StudioButton type="button" variant="subtle" onClick={handleLogout} disabled={loggingOut}>
+              {loggingOut ? "..." : "Logout"}
+            </StudioButton>
+          </div>
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-6 md:px-10 py-8">
-        <div className="flex flex-wrap gap-2 mb-8">
+      <div className="mx-auto max-w-6xl px-6 py-8 md:px-10 md:py-10">
+        <div className="mb-6 flex gap-0.5 overflow-x-auto rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-soft)] p-1">
           {tabs.map((item) => (
             <button
               key={item.id}
               type="button"
               onClick={() => setTab(item.id)}
-              className={`px-4 py-2 rounded-full text-sm border ${
+              className={`shrink-0 rounded-[calc(var(--radius-md)-2px)] px-3.5 py-2 text-sm transition ${
                 tab === item.id
-                  ? "bg-white text-black border-white"
-                  : "border-zinc-800 text-zinc-400 hover:text-white"
+                  ? "bg-[var(--bg-elevated)] font-medium text-[var(--text)] shadow-sm"
+                  : "text-[var(--text-faint)] hover:text-[var(--text-muted)]"
               }`}
             >
               {item.label}
@@ -329,193 +336,418 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        <div className="rounded-3xl border border-zinc-800 bg-[#111113] p-6 md:p-8 space-y-6">
-          {tab === "hero" && (
+        <StudioPanel className="space-y-5">
+          {tab === "card" && (
             <>
-              <Field label="Location" value={content.hero.location} onChange={(value) => setContent({ ...content, hero: { ...content.hero, location: value } })} />
-              <Field label="Headline 1" value={content.hero.text1} onChange={(value) => setContent({ ...content, hero: { ...content.hero, text1: value } })} />
-              <Field label="Headline 2" value={content.hero.text2} onChange={(value) => setContent({ ...content, hero: { ...content.hero, text2: value } })} />
-              <Field label="Description" value={content.hero.desc} onChange={(value) => setContent({ ...content, hero: { ...content.hero, desc: value } })} multiline />
-              <Field label="Button" value={content.hero.btn} onChange={(value) => setContent({ ...content, hero: { ...content.hero, btn: value } })} />
-            </>
-          )}
-
-          {tab === "about" && (
-            <>
-              <Field label="Section title" value={content.about.title} onChange={(value) => setContent({ ...content, about: { ...content.about, title: value } })} />
-              <Field label="Profile image URL" value={content.about.profileImage} onChange={(value) => setContent({ ...content, about: { ...content.about, profileImage: value } })} />
-              <Field label="Bio paragraph 1" value={content.about.desc1} onChange={(value) => setContent({ ...content, about: { ...content.about, desc1: value } })} multiline />
-              <Field label="Bio paragraph 2" value={content.about.desc2} onChange={(value) => setContent({ ...content, about: { ...content.about, desc2: value } })} multiline />
-              <Field label="Expertise title" value={content.about.expertise} onChange={(value) => setContent({ ...content, about: { ...content.about, expertise: value } })} />
-              <ListEditor label="Expertise items" items={content.about.expertiseItems} onChange={(items) => setContent({ ...content, about: { ...content.about, expertiseItems: items } })} />
-              <div className="grid md:grid-cols-3 gap-4">
-                {content.about.stats.map((stat, index) => (
-                  <div key={index} className="space-y-2">
-                    <Field
-                      label={`Stat ${index + 1} value`}
-                      value={stat.value}
-                      onChange={(value) => {
-                        const stats = [...content.about.stats];
-                        stats[index] = { ...stats[index], value };
-                        setContent({ ...content, about: { ...content.about, stats } });
-                      }}
-                    />
-                    <Field
-                      label={`Stat ${index + 1} label`}
-                      value={stat.label}
-                      onChange={(value) => {
-                        const stats = [...content.about.stats];
-                        stats[index] = { ...stats[index], label: value };
-                        setContent({ ...content, about: { ...content.about, stats } });
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
+              <p className="text-sm text-[var(--text-faint)]">
+                Front of the calling card — name is fixed in UI; edit role, bio, and portrait.
+              </p>
+              <StudioField
+                label="Role line"
+                value={content.hero.text1}
+                onChange={(value) =>
+                  setContent({ ...content, hero: { ...content.hero, text1: value } })
+                }
+              />
+              <StudioField
+                label="Portrait image URL"
+                value={content.about.profileImage}
+                onChange={(value) =>
+                  setContent({ ...content, about: { ...content.about, profileImage: value } })
+                }
+              />
+              <StudioField
+                label="Short bio (on card)"
+                value={content.about.desc1}
+                onChange={(value) =>
+                  setContent({ ...content, about: { ...content.about, desc1: value } })
+                }
+                multiline
+              />
+              <StudioField
+                label="CTA primary label"
+                value={content.hero.btn}
+                onChange={(value) =>
+                  setContent({ ...content, hero: { ...content.hero, btn: value } })
+                }
+              />
             </>
           )}
 
           {tab === "projects" && (
-            <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <h2 className="text-lg font-semibold">Projects ({projects.length})</h2>
-                <button
+            <div className="space-y-5">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-base font-semibold">Work · {projects.length}</h2>
+                <StudioButton
                   type="button"
                   onClick={() => {
                     setIsCreatingProject(true);
-                    setEditingProject(null);
+                    setEditingProject({ ...emptyProject });
                   }}
-                  className="px-4 py-2 rounded-full bg-white text-black text-sm font-semibold"
                 >
                   Add project
-                </button>
+                </StudioButton>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {projects.map((project) => (
                   <div
                     key={project.id}
-                    className="flex flex-col md:flex-row md:items-center justify-between gap-4 rounded-2xl border border-zinc-800 p-4"
+                    className="flex flex-col justify-between gap-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg)] p-4 md:flex-row md:items-center"
                   >
-                    <div>
-                      <p className="font-semibold">{project.title}</p>
-                      <p className="text-sm text-zinc-500">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{project.title}</p>
+                      <p className="mt-0.5 text-xs text-[var(--text-faint)]">
                         {project.year} · {project.category}
                         {project.featured ? " · Featured" : ""}
                       </p>
                     </div>
-                    <div className="flex gap-2">
-                      <button
+                    <div className="flex shrink-0 gap-2">
+                      <StudioButton
                         type="button"
+                        variant="ghost"
                         onClick={() => {
                           setEditingProject(project);
                           setIsCreatingProject(false);
                         }}
-                        className="px-3 py-2 rounded-xl border border-zinc-700 text-sm"
                       >
                         Edit
-                      </button>
-                      <button
+                      </StudioButton>
+                      <StudioButton
                         type="button"
+                        variant="danger"
                         onClick={() => project.id && deleteProject(project.id)}
-                        className="px-3 py-2 rounded-xl border border-red-900 text-red-300 text-sm"
                       >
                         Delete
-                      </button>
+                      </StudioButton>
                     </div>
                   </div>
                 ))}
               </div>
-
-              {(isCreatingProject || editingProject) && currentProject && (
-                <div className="rounded-2xl border border-zinc-700 p-5 space-y-4">
-                  <h3 className="font-semibold">{isCreatingProject ? "New project" : "Edit project"}</h3>
-                  <Field label="Title" value={currentProject.title} onChange={(value) => setEditingProject({ ...currentProject, title: value })} />
-                  <Field label="Category" value={currentProject.category} onChange={(value) => setEditingProject({ ...currentProject, category: value })} />
-                  <Field label="Year" value={currentProject.year} onChange={(value) => setEditingProject({ ...currentProject, year: value })} />
-                  <Field label="Image URL" value={currentProject.image} onChange={(value) => setEditingProject({ ...currentProject, image: value })} />
-                  <Field label="Description" value={currentProject.description} onChange={(value) => setEditingProject({ ...currentProject, description: value })} multiline />
-                  <label className="flex items-center gap-2 text-sm text-zinc-300">
-                    <input
-                      type="checkbox"
-                      checked={currentProject.featured ?? false}
-                      onChange={(e) => setEditingProject({ ...currentProject, featured: e.target.checked })}
-                    />
-                    Show on homepage (featured)
-                  </label>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => saveProject(currentProject)}
-                      className="px-4 py-2 rounded-xl bg-white text-black text-sm font-semibold"
-                    >
-                      Save project
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingProject(null);
-                        setIsCreatingProject(false);
-                      }}
-                      className="px-4 py-2 rounded-xl border border-zinc-700 text-sm"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
-          )}
-
-          {tab === "skills" && (
-            <>
-              <Field label="Section title" value={content.skills.title} onChange={(value) => setContent({ ...content, skills: { ...content.skills, title: value } })} />
-              <ListEditor label="Skills" items={content.skills.items} onChange={(items) => setContent({ ...content, skills: { ...content.skills, items } })} />
-            </>
           )}
 
           {tab === "contact" && (
             <>
-              <Field label="Subtitle" value={content.contact.subtitle} onChange={(value) => setContent({ ...content, contact: { ...content.contact, subtitle: value } })} />
-              <Field label="Title line 1" value={content.contact.title1} onChange={(value) => setContent({ ...content, contact: { ...content.contact, title1: value } })} />
-              <Field label="Title line 2" value={content.contact.title2} onChange={(value) => setContent({ ...content, contact: { ...content.contact, title2: value } })} />
-              <Field label="Button" value={content.contact.button} onChange={(value) => setContent({ ...content, contact: { ...content.contact, button: value } })} />
-              <Field label="Email" value={content.contact.email} onChange={(value) => setContent({ ...content, contact: { ...content.contact, email: value } })} />
-              <Field label="Telegram" value={content.contact.telegram} onChange={(value) => setContent({ ...content, contact: { ...content.contact, telegram: value } })} />
-              <Field label="Behance" value={content.contact.behance} onChange={(value) => setContent({ ...content, contact: { ...content.contact, behance: value } })} />
-              <Field label="Dribbble" value={content.contact.dribbble} onChange={(value) => setContent({ ...content, contact: { ...content.contact, dribbble: value } })} />
+              <p className="text-sm text-[var(--text-faint)]">
+                Short copy + any contacts you want. Empty rows are hidden on the site. Add Instagram / LinkedIn / whatever later — no code changes needed.
+              </p>
+              <StudioField
+                label="Eyebrow"
+                value={content.contact.subtitle}
+                onChange={(value) =>
+                  setContent({ ...content, contact: { ...content.contact, subtitle: value } })
+                }
+              />
+              <StudioField
+                label="Headline"
+                value={content.contact.title1}
+                onChange={(value) =>
+                  setContent({ ...content, contact: { ...content.contact, title1: value } })
+                }
+              />
+              <StudioField
+                label="Short note"
+                value={content.contact.button}
+                onChange={(value) =>
+                  setContent({ ...content, contact: { ...content.contact, button: value } })
+                }
+                multiline
+              />
+
+              <div>
+                <div className="mb-3 flex items-center justify-between">
+                  <StudioLabel>Channels</StudioLabel>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const channels = [
+                        ...(content.contact.channels?.length
+                          ? content.contact.channels
+                          : channelsFromLegacy(content.contact)),
+                        { label: "", value: "", url: "", group: "primary" as const },
+                      ];
+                      setContent({ ...content, contact: { ...content.contact, channels } });
+                    }}
+                    className="text-xs font-medium text-[var(--text-muted)] transition hover:text-[var(--text)]"
+                  >
+                    + Add channel
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {(content.contact.channels?.length
+                    ? content.contact.channels
+                    : channelsFromLegacy(content.contact)
+                  ).map((channel, index) => {
+                    const list = content.contact.channels?.length
+                      ? content.contact.channels
+                      : channelsFromLegacy(content.contact);
+                    const update = (patch: Partial<ContactChannel>) => {
+                      const channels = list.map((item, i) =>
+                        i === index ? { ...item, ...patch } : item
+                      );
+                      setContent({ ...content, contact: { ...content.contact, channels } });
+                    };
+                    return (
+                      <div
+                        key={index}
+                        className="grid gap-2 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg)] p-3 sm:grid-cols-[0.9fr_1.1fr_1.2fr_auto_auto]"
+                      >
+                        <StudioInput
+                          type="text"
+                          placeholder="Label (Email, Telegram…)"
+                          value={channel.label}
+                          onChange={(e) => update({ label: e.target.value })}
+                        />
+                        <StudioInput
+                          type="text"
+                          placeholder="Display value"
+                          value={channel.value}
+                          onChange={(e) => update({ value: e.target.value })}
+                        />
+                        <StudioInput
+                          type="text"
+                          placeholder="URL (optional — auto if empty)"
+                          value={channel.url}
+                          onChange={(e) => update({ url: e.target.value })}
+                        />
+                        <select
+                          value={channel.group}
+                          onChange={(e) =>
+                            update({
+                              group: e.target.value === "social" ? "social" : "primary",
+                            })
+                          }
+                          className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg)] px-2 py-2 text-sm text-[var(--text)] outline-none"
+                        >
+                          <option value="primary">Primary</option>
+                          <option value="social">Social</option>
+                        </select>
+                        <StudioButton
+                          type="button"
+                          variant="danger"
+                          onClick={() => {
+                            const channels = list.filter((_, i) => i !== index);
+                            setContent({
+                              ...content,
+                              contact: { ...content.contact, channels },
+                            });
+                          }}
+                        >
+                          ✕
+                        </StudioButton>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </>
           )}
 
           {tab === "labels" && (
             <>
-              <Field label="Navbar: Projects" value={content.navbar.projects} onChange={(value) => setContent({ ...content, navbar: { ...content.navbar, projects: value } })} />
-              <Field label="Navbar: Contact" value={content.navbar.contact} onChange={(value) => setContent({ ...content, navbar: { ...content.navbar, contact: value } })} />
-              <Field label="Projects section title" value={content.projects.title} onChange={(value) => setContent({ ...content, projects: { ...content.projects, title: value } })} />
-              <Field label="Projects: Showing" value={content.projects.showing} onChange={(value) => setContent({ ...content, projects: { ...content.projects, showing: value } })} />
-              <Field label="Projects: of" value={content.projects.of} onChange={(value) => setContent({ ...content, projects: { ...content.projects, of: value } })} />
-              <Field label="Projects: View all" value={content.projects.viewAll} onChange={(value) => setContent({ ...content, projects: { ...content.projects, viewAll: value } })} />
-              <Field label="Projects: All page title" value={content.projects.allTitle} onChange={(value) => setContent({ ...content, projects: { ...content.projects, allTitle: value } })} />
+              <StudioField
+                label="Navbar: Work"
+                value={content.navbar.projects}
+                onChange={(value) =>
+                  setContent({
+                    ...content,
+                    navbar: { ...content.navbar, projects: value },
+                  })
+                }
+              />
+              <StudioField
+                label="Navbar: Contact"
+                value={content.navbar.contact}
+                onChange={(value) =>
+                  setContent({
+                    ...content,
+                    navbar: { ...content.navbar, contact: value },
+                  })
+                }
+              />
+              <StudioField
+                label="Work section title"
+                value={content.projects.title}
+                onChange={(value) =>
+                  setContent({
+                    ...content,
+                    projects: { ...content.projects, title: value },
+                  })
+                }
+              />
+              <StudioField
+                label="View all label"
+                value={content.projects.viewAll}
+                onChange={(value) =>
+                  setContent({
+                    ...content,
+                    projects: { ...content.projects, viewAll: value },
+                  })
+                }
+              />
+              <StudioField
+                label="/projects page title"
+                value={content.projects.allTitle}
+                onChange={(value) =>
+                  setContent({
+                    ...content,
+                    projects: { ...content.projects, allTitle: value },
+                  })
+                }
+              />
             </>
           )}
 
           {tab !== "projects" && (
-            <div className="flex items-center gap-4 pt-2">
-              <button
-                type="button"
-                disabled={saving}
-                onClick={() => savePortfolio()}
-                className="px-6 py-3 rounded-xl bg-white text-black font-semibold disabled:opacity-60"
-              >
+            <div className="flex items-center gap-4 border-t border-[var(--border)] pt-5">
+              <StudioButton type="button" disabled={saving} onClick={() => savePortfolio()}>
                 {saving ? "Saving..." : "Save changes"}
-              </button>
-              {message && <span className="text-sm text-zinc-400">{message}</span>}
+              </StudioButton>
+              {message && (
+                <span className="text-sm text-[var(--text-muted)]">{message}</span>
+              )}
             </div>
           )}
 
-          {tab === "projects" && message && <p className="text-sm text-zinc-400">{message}</p>}
-        </div>
+          {tab === "projects" && message && (
+            <p className="text-sm text-[var(--text-muted)]">{message}</p>
+          )}
+        </StudioPanel>
       </div>
+
+      <AnimatePresence>
+        {(isCreatingProject || editingProject) && currentProject && (
+          <motion.div
+            className="fixed inset-0 z-[120] flex items-end justify-center p-0 sm:items-center sm:p-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <motion.button
+              type="button"
+              aria-label="Close"
+              className="absolute inset-0 bg-black/55 backdrop-blur-sm"
+              onClick={closeProjectEditor}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            />
+
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="project-editor-title"
+              initial={{ opacity: 0, y: 28, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.98 }}
+              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+              className="relative z-10 flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-[1.25rem] border border-[var(--border)] bg-[var(--bg-panel)] shadow-[var(--shadow-panel)] sm:rounded-[var(--radius-xl)]"
+            >
+              <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4 md:px-6">
+                <h3 id="project-editor-title" className="text-base font-semibold">
+                  {isCreatingProject ? "New project" : "Edit project"}
+                </h3>
+                <StudioButton type="button" variant="subtle" onClick={closeProjectEditor}>
+                  Close
+                </StudioButton>
+              </div>
+
+              <div className="space-y-4 overflow-y-auto px-5 py-5 md:px-6">
+                <StudioField label="Title" value={currentProject.title} onChange={(value) => setEditingProject({ ...currentProject, title: value })} />
+                <StudioField label="Category" value={currentProject.category} onChange={(value) => setEditingProject({ ...currentProject, category: value })} />
+                <StudioField label="Year" value={currentProject.year} onChange={(value) => setEditingProject({ ...currentProject, year: value })} />
+                <StudioField label="Image URL" value={currentProject.image} onChange={(value) => setEditingProject({ ...currentProject, image: value })} />
+                <StudioField label="Short description" value={currentProject.description} onChange={(value) => setEditingProject({ ...currentProject, description: value })} multiline />
+                <StudioField
+                  label="Full details"
+                  value={currentProject.detail ?? ""}
+                  onChange={(value) => setEditingProject({ ...currentProject, detail: value })}
+                  multiline
+                />
+
+                <div>
+                  <div className="mb-3 flex items-center justify-between">
+                    <StudioLabel>Links (Behance, Live site, etc.)</StudioLabel>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditingProject({
+                          ...currentProject,
+                          links: [...(currentProject.links ?? []), { label: "", url: "" }],
+                        })
+                      }
+                      className="text-xs font-medium text-[var(--text-muted)] transition hover:text-[var(--text)]"
+                    >
+                      + Add link
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {(currentProject.links ?? []).map((link, index) => (
+                      <div key={index} className="grid gap-2 sm:grid-cols-[1fr_1.4fr_auto]">
+                        <StudioInput
+                          type="text"
+                          placeholder="Label"
+                          value={link.label}
+                          onChange={(e) => {
+                            const links = [...(currentProject.links ?? [])];
+                            links[index] = { ...links[index], label: e.target.value };
+                            setEditingProject({ ...currentProject, links });
+                          }}
+                        />
+                        <StudioInput
+                          type="text"
+                          placeholder="https://..."
+                          value={link.url}
+                          onChange={(e) => {
+                            const links = [...(currentProject.links ?? [])];
+                            links[index] = { ...links[index], url: e.target.value };
+                            setEditingProject({ ...currentProject, links });
+                          }}
+                        />
+                        <StudioButton
+                          type="button"
+                          variant="ghost"
+                          onClick={() =>
+                            setEditingProject({
+                              ...currentProject,
+                              links: (currentProject.links ?? []).filter((_, i) => i !== index),
+                            })
+                          }
+                        >
+                          ×
+                        </StudioButton>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
+                  <input
+                    type="checkbox"
+                    checked={currentProject.featured ?? false}
+                    onChange={(e) =>
+                      setEditingProject({ ...currentProject, featured: e.target.checked })
+                    }
+                    className="rounded border-[var(--border)]"
+                  />
+                  Show on homepage
+                </label>
+              </div>
+
+              <div className="flex items-center gap-2 border-t border-[var(--border)] px-5 py-4 md:px-6">
+                <StudioButton type="button" disabled={saving} onClick={() => saveProject(currentProject)}>
+                  {saving ? "Saving..." : "Save project"}
+                </StudioButton>
+                <StudioButton type="button" variant="ghost" onClick={closeProjectEditor}>
+                  Cancel
+                </StudioButton>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }

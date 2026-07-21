@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isUnauthorized, requireAdminSession } from "@/lib/api-auth";
+import { serializeProjectLinks } from "@/lib/project-links";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -27,7 +28,9 @@ export async function PUT(request: Request, context: RouteContext) {
         category: body.category,
         year: body.year,
         description: body.description,
+        detail: body.detail ?? "",
         image: body.image,
+        links: serializeProjectLinks(body.links),
         featured: body.featured,
         order: body.order,
       },

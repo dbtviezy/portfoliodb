@@ -5,10 +5,10 @@
   },
   "hero": {
     "location": "Based in Russia",
-    "text1": "MOTION DESIGNER",
+    "text1": "Motion · interface · visual systems",
     "text2": "CREATIVE DEVELOPER",
     "desc": "Creating high-end motion graphics, digital interfaces, and interactive experiences with absolute precision.",
-    "btn": "Explore Projects"
+    "btn": "Work"
   },
   "about": {
     "title": "ABOUT ME",
@@ -111,9 +111,9 @@
     ]
   },
   "contact": {
-    "subtitle": "Get in Touch",
-    "title1": "Let's build something",
-    "title2": "great together.",
-    "button": "Write me"
+    "subtitle": "Contact",
+    "title1": "Write me",
+    "title2": "",
+    "button": "A short note about a project — or just hello."
   }
 }

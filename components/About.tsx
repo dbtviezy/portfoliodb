@@ -9,40 +9,42 @@ interface AboutProps {
 
 const About = memo(function About({ lang }: AboutProps) {
   const { content } = useContent();
-  const t = content.about;
-  const stats = t.stats;
+  const about = content.about;
+  const skills = content.skills;
 
   return (
-    <section className="py-24 px-10 md:px-20 bg-[#0a0a0a] border-t border-zinc-900">
-      <div className="max-w-6xl mx-auto">
-        <h2 className="text-sm font-semibold tracking-widest text-zinc-400 uppercase mb-16">
-          {t.title}
-        </h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-20">
-          <div className="flex flex-col justify-center">
-            <div className="relative aspect-square rounded-lg overflow-hidden bg-gradient-to-br from-zinc-800 to-zinc-900 border border-zinc-800 group">
+    <section
+      id="about"
+      className="relative"
+      style={{
+        paddingLeft: "var(--page-x)",
+        paddingRight: "var(--page-x)",
+        paddingTop: "var(--section-y)",
+        paddingBottom: "var(--section-y)",
+      }}
+    >
+      <div className="mx-auto w-full max-w-5xl 2xl:max-w-6xl">
+        <div className="grid grid-cols-1 items-start gap-7 sm:gap-9 md:grid-cols-[0.85fr_1.15fr] md:gap-12 lg:gap-16">
+          <div className="mx-auto w-full max-w-[280px] sm:max-w-sm md:mx-0 md:max-w-none">
+            <div className="relative aspect-[4/5] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg-elevated)]">
               <img
                 src={
-                  t.profileImage ||
+                  about.profileImage ||
                   "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80"
                 }
-                alt="Profile"
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                alt={lang === "RU" ? "Портрет" : "Portrait"}
+                className="h-full w-full object-cover"
+                loading="lazy"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
             </div>
 
-            <div className="grid grid-cols-3 gap-4 mt-8">
-              {stats.map((stat, idx) => (
-                <div
-                  key={idx}
-                  className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 text-center hover:bg-zinc-900 hover:border-zinc-700 transition-all"
-                >
-                  <div className="text-2xl md:text-3xl font-bold text-white mb-1">
+            <div className="mt-4 grid grid-cols-3 gap-2 sm:mt-6 sm:gap-3">
+              {about.stats.map((stat, idx) => (
+                <div key={idx} className="text-left">
+                  <div className="text-base font-semibold tracking-tight text-[var(--text)] sm:text-xl md:text-2xl">
                     {stat.value}
                   </div>
-                  <div className="text-xs md:text-sm text-zinc-400 uppercase tracking-wider">
+                  <div className="mt-0.5 text-[9px] leading-snug text-[var(--text-faint)] sm:mt-1 sm:text-[11px]">
                     {stat.label}
                   </div>
                 </div>
@@ -50,26 +52,33 @@ const About = memo(function About({ lang }: AboutProps) {
             </div>
           </div>
 
-          <div className="flex flex-col justify-center">
-            <p className="text-xl md:text-2xl text-zinc-200 leading-relaxed font-light mb-8">
-              {t.desc1}
+          <div className="md:pt-1">
+            <p className="mb-2.5 text-xs text-[var(--text-faint)] sm:mb-3 sm:text-sm">{about.title}</p>
+            <p className="text-[17px] font-light leading-relaxed text-[var(--text)] sm:text-xl md:text-2xl">
+              {about.desc1}
             </p>
-            <p className="text-base md:text-lg text-zinc-400 leading-relaxed mb-8">
-              {t.desc2}
+            <p className="mt-3.5 text-[13px] leading-relaxed text-[var(--text-muted)] sm:mt-5 sm:text-sm md:text-[15px]">
+              {about.desc2}
             </p>
 
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold tracking-widest text-zinc-300 uppercase mb-6">
-                {t.expertise}
-              </h3>
-              <div className="grid grid-cols-2 gap-3">
-                {t.expertiseItems.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="bg-zinc-900/30 border border-zinc-800/50 rounded-lg px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800/30 hover:border-zinc-700 transition-all cursor-default"
-                  >
+            <div className="mt-7 sm:mt-10">
+              <p className="mb-2.5 text-xs text-[var(--text-faint)] sm:mb-3 sm:text-sm">{about.expertise}</p>
+              <div className="flex flex-wrap gap-x-3 gap-y-1.5 sm:gap-x-4 sm:gap-y-2">
+                {about.expertiseItems.map((item) => (
+                  <span key={item} className="text-[13px] text-[var(--text-muted)] sm:text-sm">
                     {item}
-                  </div>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-7 border-t border-[var(--border)] pt-5 sm:mt-10 sm:pt-8">
+              <p className="mb-2.5 text-xs text-[var(--text-faint)] sm:mb-3 sm:text-sm">{skills.title}</p>
+              <div className="flex flex-wrap gap-x-3 gap-y-1.5 sm:gap-x-4 sm:gap-y-2">
+                {skills.items.map((skill) => (
+                  <span key={skill} className="text-[13px] text-[var(--text)] sm:text-sm">
+                    {skill}
+                  </span>
                 ))}
               </div>
             </div>

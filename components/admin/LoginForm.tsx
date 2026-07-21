@@ -1,10 +1,10 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { StudioButton, StudioInput, StudioLabel } from "@/components/admin/studio-ui";
 
 export default function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,16 +25,22 @@ export default function LoginForm() {
 
       if (!response.ok) {
         const data = await response.json();
-        setError(data.error ?? "Login failed");
+        setError(
+          data.error === "Invalid credentials"
+            ? "Неверный email или пароль"
+            : (data.error ?? "Login failed")
+        );
+        setLoading(false);
         return;
       }
 
       const next = searchParams.get("next") ?? "/studio/dashboard";
-      router.push(next);
-      router.refresh();
+      // Full navigation so the Set-Cookie from login is always sent on the
+      // next document request (avoids App Router soft-nav + refresh races).
+      const target = next.startsWith("/") && !next.startsWith("//") ? next : "/studio/dashboard";
+      window.location.assign(target);
     } catch {
       setError("Network error");
-    } finally {
       setLoading(false);
     }
   }
@@ -42,44 +48,36 @@ export default function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div>
-        <label htmlFor="email" className="block text-xs uppercase tracking-widest text-zinc-500 mb-2">
-          Email
-        </label>
-        <input
+        <StudioLabel>Email</StudioLabel>
+        <StudioInput
           id="email"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-xl bg-zinc-900 border border-zinc-800 px-4 py-3 text-white outline-none focus:border-zinc-500"
+          disabled={loading}
           required
           autoComplete="username"
         />
       </div>
 
       <div>
-        <label htmlFor="password" className="block text-xs uppercase tracking-widest text-zinc-500 mb-2">
-          Password
-        </label>
-        <input
+        <StudioLabel>Password</StudioLabel>
+        <StudioInput
           id="password"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded-xl bg-zinc-900 border border-zinc-800 px-4 py-3 text-white outline-none focus:border-zinc-500"
+          disabled={loading}
           required
           autoComplete="current-password"
         />
       </div>
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full rounded-xl bg-white text-black font-semibold py-3 hover:bg-zinc-200 transition disabled:opacity-60"
-      >
+      <StudioButton type="submit" disabled={loading} className="w-full py-3">
         {loading ? "Signing in..." : "Sign in"}
-      </button>
+      </StudioButton>
     </form>
   );
 }

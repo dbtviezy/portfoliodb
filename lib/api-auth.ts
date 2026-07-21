@@ -10,8 +10,10 @@ export async function requireAdminSession(): Promise<AdminSession | NextResponse
   return session;
 }
 
-export function requireAdminFromRequest(request: NextRequest): AdminSession | NextResponse {
-  const session = getSessionFromRequest(request);
+export async function requireAdminFromRequest(
+  request: NextRequest
+): Promise<AdminSession | NextResponse> {
+  const session = await getSessionFromRequest(request);
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
