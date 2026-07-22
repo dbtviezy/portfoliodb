@@ -1,18 +1,32 @@
 /**
  * Apply Prisma schema + optional admin seed to Turso.
  *
- * Usage (from project root, with real values):
+ * Usage:
  *   TURSO_DATABASE_URL="libsql://..." \
  *   TURSO_AUTH_TOKEN="..." \
  *   ADMIN_EMAIL="you@email.com" \
  *   ADMIN_PASSWORD="your-password" \
- *   npx tsx scripts/setup-turso.ts
+ *   npm run db:turso
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { createClient } from "@libsql/client";
 import { createPrismaClient } from "../lib/create-prisma";
 import { hashPassword } from "../lib/auth";
+
+function splitSqlStatements(sql: string): string[] {
+  const withoutBlockComments = sql.replace(/\/\*[\s\S]*?\*\//g, "");
+  return withoutBlockComments
+    .split(";")
+    .map((chunk) =>
+      chunk
+        .split("\n")
+        .map((line) => line.replace(/^\s*--.*$/, "").trimEnd())
+        .join("\n")
+        .trim()
+    )
+    .filter((statement) => statement.length > 0);
+}
 
 async function main() {
   const url = process.env.TURSO_DATABASE_URL?.trim();
@@ -29,14 +43,9 @@ async function main() {
 
   const sqlPath = path.join(process.cwd(), "prisma", "turso-schema.sql");
   const sql = readFileSync(sqlPath, "utf8");
+  const statements = splitSqlStatements(sql);
 
   const client = createClient({ url, authToken });
-
-  // Split on statement boundaries; skip empty chunks.
-  const statements = sql
-    .split(";")
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0 && !s.startsWith("--"));
 
   console.log(`Applying ${statements.length} SQL statements to Turso...`);
   for (const statement of statements) {
@@ -44,7 +53,6 @@ async function main() {
       await client.execute(statement);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      // Ignore "already exists" so the script is re-runnable.
       if (/already exists|duplicate/i.test(message)) {
         console.log(`skip: ${message}`);
         continue;
@@ -69,7 +77,7 @@ async function main() {
     console.log("Skip admin (set ADMIN_EMAIL + ADMIN_PASSWORD to upsert).");
   }
 
-  console.log("Done. Open /studio and sign in. Studio saves should work now.");
+  console.log("Done. Open /studio and sign in.");
 }
 
 main().catch((error) => {
