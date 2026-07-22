@@ -1,114 +1,205 @@
-﻿# Portfolio
+﻿# Портфолио Даниила Баутина (`db.tviezy`)
 
-Next.js portfolio with an admin studio (Prisma + JWT auth).
+Сайт-визитка + админка **Studio** (`/studio`).  
+Стек: **Next.js 16 · React 19 · Prisma · SQLite/Turso · JWT**.
 
-## Local setup
+Прод: [portfoliodb-three.vercel.app](https://portfoliodb-three.vercel.app)  
+Репо: [github.com/dbtviezy/portfoliodb](https://github.com/dbtviezy/portfoliodb)
+
+---
+
+## Главное: куда сохраняется контент
+
+| Вопрос | Ответ |
+|---|---|
+| Studio пишет в **код** (`locales/*.json`)? | **Нет.** JSON в `locales/` — только стартовый seed / запасной контент. |
+| Studio пишет куда? | В **базу данных** (Prisma): проекты, карточка, контакты, навыки. |
+| Сайт откуда читает? | Из **той же базы** через `/api/content`. Изменил в Studio → сразу на сайте (после успешного Save). |
+| Почему на Vercel было «Failed to save project»? | На serverless обычный `file:./dev.db` **не живёт**. Без **Turso** база лежит в `/tmp` и **не держит** правки между запросами. |
+
+**Чтобы править сайт в любой момент с продакшена**, нужна облачная БД **Turso** (бесплатный tier) + две переменные в Vercel. Без этого Studio на Vercel только смотрит контент, но надёжно сохранить не может.
+
+---
+
+## Что за что отвечает (карта проекта)
+
+### Публичный сайт
+| Путь / файл | Зачем |
+|---|---|
+| `/` (`app/page.tsx`) | Главная: Card → Work → Contact |
+| `/projects` | Все проекты |
+| `components/Hero.tsx` | Имя, роль, волны, CTA |
+| `components/BioModal.tsx` | Био по `#bio` |
+| `components/Projects.tsx` | Карусель работ |
+| `components/Contact.tsx` | Email / Telegram / соцсети из базы |
+| `components/Navbar.tsx` | Навигация |
+| `components/ContentProvider.tsx` | Тянет `/api/content` и отдаёт тексты всему сайту |
+| `app/globals.css` | Токены, градиенты, атмосфера |
+
+### Studio (кабинет)
+| Путь | Зачем |
+|---|---|
+| `/studio` | Логин |
+| `/studio/dashboard` | Редактор: вкладки **Card / Work / Reach / Labels** |
+| `components/admin/AdminDashboard.tsx` | Весь UI студии |
+| `POST /api/auth/login` | Вход, cookie `admin_token` |
+| `GET /api/auth/me` | Проверка сессии |
+| `PUT /api/admin/portfolio` | Сохранить карточку / контакты / лейблы |
+| `GET·POST /api/admin/projects` | Список / создать проект |
+| `PUT·DELETE /api/admin/projects/[id]` | Обновить / удалить проект |
+| `GET /api/admin/db-status` | Режим базы: durable или ephemeral |
+
+### Данные и база
+| Файл | Зачем |
+|---|---|
+| `prisma/schema.prisma` | Модели: Admin, Portfolio, Project, Skill… |
+| `prisma/seed.ts` | Первичное наполнение из `locales/` + админ из env |
+| `locales/en.json`, `locales/ru.json` | Стартовые тексты EN/RU (не «живой» прод-контент) |
+| `lib/content.ts` | Сборка контента сайта из БД |
+| `lib/create-prisma.ts` | Подключение: Turso **или** локальный файл **или** `/tmp` на Vercel |
+| `lib/db-mode.ts` | Понимает durable vs ephemeral; блокирует «ложные» сохранения |
+| `lib/bootstrap-admin.ts` | Первый вход: если админов 0 — создаёт из `ADMIN_EMAIL` / `ADMIN_PASSWORD` |
+| `lib/contact-channels.ts` | Каналы связи (Email, Telegram, Behance…) |
+| `middleware.ts` | Пускает в dashboard только с cookie (проверка JWT — в Node API) |
+
+### Секреты (не коммитить)
+| Переменная | Зачем |
+|---|---|
+| `JWT_SECRET` | Подпись cookie сессии Studio (**обязательно** на проде) |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Логин Studio + bootstrap / seed |
+| `DATABASE_URL` | Локально: `file:./dev.db`. На Vercel для SQLite-файла — **не подходит** |
+| `TURSO_DATABASE_URL` | `libsql://…` — облачная БД на Vercel |
+| `TURSO_AUTH_TOKEN` | Токен Turso |
+
+`.env` в git **не** попадает. На Vercel секреты задаются только в  
+**Project → Settings → Environment Variables** (загрузка файла `.env` в репозиторий секреты **не** включает).
+
+---
+
+## Локально (у себя на машине)
 
 ```bash
 npm install
 cp .env.example .env
-# Edit .env: set JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD
+# В .env: JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD, DATABASE_URL=file:./dev.db
 npm run db:setup
 npm run dev
 ```
 
-Studio: http://localhost:3000/studio
+- Сайт: http://localhost:3000  
+- Studio: http://localhost:3000/studio  
 
-## Why production login fails
+Здесь SQLite-файл на диске — **сохранения работают** и сразу видны на сайте.
 
-The UI message **"Login failed"** (English) means the login API returned **500/503** — usually the database is unreachable (typical when `DATABASE_URL=file:./dev.db` is deployed to **Vercel**). Local `file:` SQLite is ephemeral / missing on serverless.
-
-Wrong email/password shows **"Неверный email или пароль"** (401), not "Login failed".
-
-`ADMIN_EMAIL` / `ADMIN_PASSWORD` are **not** checked on every login. They are used to:
-
-1. Seed / `npm run admin:reset`, and
-2. **One-time bootstrap**: if the `Admin` table has **zero** rows and you sign in with exactly those env values, the first admin is created automatically.
-
-Login always verifies bcrypt against the `Admin` row in the database.
-
-## Deploy checklist
-
-### Required environment variables (host dashboard — do not upload `.env` as a file on Vercel)
-
-| Variable | Required | Notes |
-|---|---|---|
-| `JWT_SECRET` | **Yes** (prod) | Long random string. Missing → 503 misconfigured. |
-| `ADMIN_EMAIL` | Recommended | Seed + first-login bootstrap |
-| `ADMIN_PASSWORD` | Recommended | Seed + first-login bootstrap |
-| `DATABASE_URL` | Local / VPS | `file:./dev.db` only on hosts with a **persistent disk** |
-| `TURSO_DATABASE_URL` | Vercel | `libsql://...` from Turso |
-| `TURSO_AUTH_TOKEN` | Vercel | Turso auth token |
-
-Uploading a `.env` file into a Git deploy does **not** reliably set secrets on Vercel. Use **Project Settings → Environment Variables**.
-
-### Vercel without Turso (temporary)
-
-`npm run build` creates `prisma/deploy.db` (schema + seed). On Vercel, if Turso is not set, the app copies that file to `/tmp` so Studio login and content work.
-
-**Caveat:** `/tmp` is per-instance and ephemeral — studio edits can disappear on cold starts. For durable CMS data, configure Turso (Option A).
-
-Required Vercel env even for the temporary path:
-
-- `JWT_SECRET`
-- `ADMIN_EMAIL` / `ADMIN_PASSWORD` (first login bootstraps admin if the Admin table is empty after seed)
-
-### Option A — Vercel + Turso (recommended)
-
-1. Create a free DB at [turso.tech](https://turso.tech) and copy URL + token.
-2. In Vercel env:
-   - `TURSO_DATABASE_URL=libsql://...`
-   - `TURSO_AUTH_TOKEN=...`
-   - `JWT_SECRET=<long random>`
-   - `ADMIN_EMAIL=you@example.com`
-   - `ADMIN_PASSWORD=<strong password>`
-3. Apply schema to Turso (from your machine, with Turso CLI):
+Полезные команды:
 
 ```bash
-# After: turso auth login && turso db shell <your-db-name>
-turso db shell <your-db-name> < prisma/migrations/20260721134448_init/migration.sql
+npm run db:push      # схема → база
+npm run db:seed      # контент + админ из env
+npm run admin:reset  # сбросить пароль админа из env
+npm run build        # как на Vercel: generate + deploy.db + next build
 ```
 
-Or push via local Prisma against a file DB, then apply the same SQL to Turso.
+---
 
-4. Redeploy. Sign in at `/studio` with `ADMIN_EMAIL` / `ADMIN_PASSWORD` once (bootstrap creates the admin if the table is empty), **or** seed from your machine:
+## Vercel: чтобы Studio реально сохраняла
+
+### 1. Создай бесплатную БД Turso
+1. Зайди на [turso.tech](https://turso.tech), создай database.  
+2. Скопируй URL (`libsql://…`) и auth token.
+
+### 2. В Vercel → Environment Variables (Production + Preview)
+- `TURSO_DATABASE_URL` = `libsql://…`
+- `TURSO_AUTH_TOKEN` = токен
+- `JWT_SECRET` = длинная случайная строка
+- `ADMIN_EMAIL` = твой email для входа
+- `ADMIN_PASSWORD` = сильный пароль
+
+### 3. Примени схему к Turso (с компьютера)
 
 ```bash
-# PowerShell example — use your real Turso values
-$env:TURSO_DATABASE_URL="libsql://..."
-$env:TURSO_AUTH_TOKEN="..."
-$env:ADMIN_EMAIL="you@example.com"
-$env:ADMIN_PASSWORD="your-password"
+# Один раз: установить CLI и залогиниться
+# https://docs.turso.tech/cli
+turso db shell ИМЯ_ТВОЕЙ_БД < prisma/migrations/20260721134448_init/migration.sql
+```
+
+Если в схеме уже больше полей, чем в старой migration — надёжнее:
+
+```bash
+# Локально собрать актуальную схему в файл, затем скормить Turso
+npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > /tmp/schema.sql
+turso db shell ИМЯ_ТВОЕЙ_БД < /tmp/schema.sql
+```
+
+Или seed/admin с Turso-env:
+
+```bash
+export TURSO_DATABASE_URL="libsql://..."
+export TURSO_AUTH_TOKEN="..."
+export ADMIN_EMAIL="you@example.com"
+export ADMIN_PASSWORD="your-password"
 npm run admin:reset
+# при необходимости: npm run db:seed
 ```
 
-### Option B — VPS / Railway / Node host with persistent disk
+### 4. Redeploy на Vercel
+После переменных — **Redeploy**.  
+В Studio баннер про `/tmp` должен пропасть. Save проекта / карточки пишет в Turso → сайт читает оттуда.
 
-1. Set `DATABASE_URL=file:./data/prod.db` (path on a persistent volume).
-2. Set `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`.
-3. On the server after deploy:
+### 5. Вход
+`/studio` → `ADMIN_EMAIL` + `ADMIN_PASSWORD`.  
+Если таблица Admin пустая — первый успешный вход **сам создаст** админа (bootstrap).
 
-```bash
-npx prisma db push
-npm run db:seed
-# or: npm run admin:reset
+---
+
+## Как устроен поток «изменил → увидел на сайте»
+
+```
+Studio (Save)
+    → API /api/admin/...  (нужна cookie login)
+        → Prisma → Turso (прод) или file:./dev.db (локаль)
+            → сайт /api/content читает ту же БД
+                → Hero / Projects / Contact показывают новое
 ```
 
-4. Open `/studio` and sign in.
+Без Turso на Vercel цепочка рвётся на шаге «записать в базу»: API отвечает понятной ошибкой вместо тихого «Failed to save project».
 
-### Build commands
+---
 
-- **Install:** `npm install` (`postinstall` → `prisma generate`)
-- **Build:** `prisma generate && next build` (`npm run build`)
-- **Start** (Node host): `npm run start`
+## Структура вкладок Studio
 
-### Cookies
+| Вкладка | Что правишь |
+|---|---|
+| **Card** | Hero-тексты, about, фото, expertise |
+| **Work** | Проекты (создать / изменить / удалить, featured) |
+| **Reach** | Контакты и соцсети (каналы) |
+| **Labels** | Подписи навбара, заголовки секций, skills |
 
-In production (`NODE_ENV=production`) the session cookie is `httpOnly`, `secure`, `sameSite=lax`. HTTPS is required.
+Язык EN/RU переключается в шапке Studio — у каждого языка **свои** строки в БД.
 
-## Scripts
+---
 
-- `npm run db:generate` — Prisma client
-- `npm run db:push` — push schema (local SQLite URL)
-- `npm run db:seed` — seed content + admin
-- `npm run admin:reset` — upsert admin password from env
+## Деплой (когда скажешь)
+
+Сейчас правки могут лежать в ветке без выката на прод — **деплой только по твоей команде**.
+
+Обычный путь после merge в `main`: Vercel подхватит сам.  
+Build: `prisma generate` → `prepare-deploy-db` (снимок для аварийного чтения) → `next build`.
+
+`prisma/deploy.db` — только запасной снимок для чтения/логина без Turso. **Не** замена облачной БД для сохранений.
+
+---
+
+## Если что-то сломалось
+
+| Симптом | Что проверить |
+|---|---|
+| `Failed to save project` / баннер про Turso | Нет `TURSO_*` в Vercel или не сделан Redeploy |
+| `Неверный email или пароль` | `ADMIN_*` в Vercel; или `npm run admin:reset` с Turso-env |
+| `JWT_SECRET is required` | Задай `JWT_SECRET` в Vercel |
+| Контент пустой / 404 content | Схема не применена к Turso или база пустая → seed / первый заход на сайт сидит из locales |
+| Бесконечный редирект Studio | Старая cookie; Logout или очисти cookie `admin_token` |
+
+---
+
+Сделано для тебя: правь визитку из Studio когда угодно — после подключения Turso сохранения живут в облаке и сразу кормят сайт. Код в `locales/` сам по себе после деплоя «магически» не меняется от кнопок Save.

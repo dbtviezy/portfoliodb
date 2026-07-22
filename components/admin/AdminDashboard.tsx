@@ -43,8 +43,9 @@ const emptyProject: ProjectItem = {
 };
 
 function normalizeAdminProject(raw: Record<string, unknown>): ProjectItem {
+  const numericId = Number(raw.id);
   return {
-    id: typeof raw.id === "number" ? raw.id : undefined,
+    id: Number.isFinite(numericId) && numericId > 0 ? numericId : undefined,
     title: String(raw.title ?? ""),
     category: String(raw.category ?? ""),
     year: String(raw.year ?? ""),
@@ -52,7 +53,7 @@ function normalizeAdminProject(raw: Record<string, unknown>): ProjectItem {
     detail: String(raw.detail ?? ""),
     image: String(raw.image ?? ""),
     featured: Boolean(raw.featured),
-    order: typeof raw.order === "number" ? raw.order : 0,
+    order: typeof raw.order === "number" ? raw.order : Number(raw.order) || 0,
     links: Array.isArray(raw.links)
       ? (raw.links as ProjectItem["links"])
       : parseProjectLinks(typeof raw.links === "string" ? raw.links : "[]"),
@@ -72,16 +73,18 @@ export default function AdminDashboard() {
   const [editingProject, setEditingProject] = useState<ProjectItem | null>(null);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [dbBanner, setDbBanner] = useState("");
 
   const currentProject = editingProject;
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [meRes, portfolioRes, projectsRes] = await Promise.all([
+      const [meRes, portfolioRes, projectsRes, dbRes] = await Promise.all([
         fetch("/api/auth/me"),
         fetch(`/api/admin/portfolio?lang=${lang}`),
         fetch(`/api/admin/projects?lang=${lang}`),
+        fetch("/api/admin/db-status"),
       ]);
 
       if (!meRes.ok) {
@@ -93,6 +96,13 @@ export default function AdminDashboard() {
 
       const me = await meRes.json();
       setEmail(me.email);
+
+      if (dbRes.ok) {
+        const db = (await dbRes.json()) as { durable?: boolean; message?: string };
+        setDbBanner(!db.durable && db.message ? db.message : "");
+      } else {
+        setDbBanner("");
+      }
 
       if (portfolioRes.ok) {
         const data = (await portfolioRes.json()) as PortfolioContent;
@@ -193,16 +203,20 @@ export default function AdminDashboard() {
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) throw new Error("Save failed");
+      if (!response.ok) {
+        const data = (await response.json().catch(() => ({}))) as { error?: string };
+        setMessage(data.error ?? "Не удалось сохранить");
+        return;
+      }
       const saved = (await response.json()) as PortfolioContent;
       const savedChannels = resolveContactChannels(saved.contact.channels, saved.contact);
       setContent({
         ...saved,
         contact: { ...saved.contact, channels: savedChannels },
       });
-      setMessage("Saved");
+      setMessage("Сохранено — сайт читает эти данные из базы");
     } catch {
-      setMessage("Failed to save");
+      setMessage("Не удалось сохранить");
     } finally {
       setSaving(false);
     }
@@ -235,28 +249,36 @@ export default function AdminDashboard() {
         }
       );
 
-      if (!response.ok) throw new Error("Project save failed");
+      if (!response.ok) {
+        const data = (await response.json().catch(() => ({}))) as { error?: string };
+        setMessage(data.error ?? "Не удалось сохранить проект");
+        return;
+      }
       setEditingProject(null);
       setIsCreatingProject(false);
       await loadData();
-      setMessage(isNew ? "Project created" : "Project updated");
+      setMessage(isNew ? "Проект создан" : "Проект обновлён — сразу на сайте");
     } catch {
-      setMessage("Failed to save project");
+      setMessage("Не удалось сохранить проект");
     } finally {
       setSaving(false);
     }
   }
 
   async function deleteProject(id: number) {
-    if (!confirm("Delete this project?")) return;
+    if (!confirm("Удалить этот проект?")) return;
     setSaving(true);
     try {
       const response = await fetch(`/api/admin/projects/${id}`, { method: "DELETE" });
-      if (!response.ok) throw new Error("Delete failed");
+      if (!response.ok) {
+        const data = (await response.json().catch(() => ({}))) as { error?: string };
+        setMessage(data.error ?? "Не удалось удалить проект");
+        return;
+      }
       await loadData();
-      setMessage("Project deleted");
+      setMessage("Проект удалён");
     } catch {
-      setMessage("Failed to delete project");
+      setMessage("Не удалось удалить проект");
     } finally {
       setSaving(false);
     }
@@ -319,6 +341,15 @@ export default function AdminDashboard() {
       </header>
 
       <div className="mx-auto max-w-6xl px-6 py-8 md:px-10 md:py-10">
+        {dbBanner && (
+          <div
+            role="status"
+            className="mb-6 rounded-[var(--radius-md)] border border-[var(--danger)]/40 bg-[var(--danger)]/10 px-4 py-3 text-sm text-[var(--text)]"
+          >
+            {dbBanner}
+          </div>
+        )}
+
         <div className="mb-6 flex gap-0.5 overflow-x-auto rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-soft)] p-1">
           {tabs.map((item) => (
             <button

@@ -1,12 +1,12 @@
-import { copyFileSync, existsSync, mkdirSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 
 const DEPLOY_DB_RELATIVE = path.join("prisma", "deploy.db");
 
 /**
- * On Vercel (and similar serverless hosts) without Turso, copy the
- * build-time SQLite snapshot to /tmp so Prisma can open a writable file.
- * Edits are per-instance / ephemeral until Turso is configured.
+ * On Vercel without Turso, copy the build-time SQLite snapshot to /tmp so
+ * Prisma can open a file. This is only for reading / login bootstrap —
+ * Studio writes will not stick across cold starts (see lib/db-mode.ts).
  */
 export function resolveServerlessSqliteUrl(): string | null {
   const onServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
@@ -27,7 +27,12 @@ export function resolveServerlessSqliteUrl(): string | null {
     copyFileSync(source, dest);
   }
 
-  // Prisma file URLs: absolute paths need three slashes — file:///tmp/...
+  try {
+    chmodSync(dest, 0o600);
+  } catch {
+    // best-effort writable bit
+  }
+
   return `file:${dest}`;
 }
 

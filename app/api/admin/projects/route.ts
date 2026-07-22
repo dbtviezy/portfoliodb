@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { toLangCode, type LangCode } from "@/lib/content";
 import { isUnauthorized, requireAdminSession } from "@/lib/api-auth";
 import { serializeProjectLinks, type ProjectLink } from "@/lib/project-links";
+import { ephemeralWriteError, isEphemeralDatabase } from "@/lib/db-mode";
 
 type ProjectPayload = {
   lang?: LangCode;
@@ -16,6 +17,39 @@ type ProjectPayload = {
   featured?: boolean;
   order?: number;
 };
+
+function rejectEphemeralWrites() {
+  if (!isEphemeralDatabase()) return null;
+  return NextResponse.json(
+    { error: ephemeralWriteError(), code: "ephemeral_db" },
+    { status: 503 }
+  );
+}
+
+function mapWriteError(error: unknown, fallback: string) {
+  const message = error instanceof Error ? error.message : String(error);
+  const lower = message.toLowerCase();
+  if (
+    lower.includes("readonly") ||
+    lower.includes("read-only") ||
+    lower.includes("attempt to write")
+  ) {
+    return {
+      error: ephemeralWriteError(),
+      code: "ephemeral_db" as const,
+      status: 503,
+    };
+  }
+  if (lower.includes("record to update not found") || lower.includes("p2025")) {
+    return {
+      error: "Проект не найден в базе (возможно, временная БД пересоздалась). Обнови Studio и попробуй снова.",
+      code: "not_found" as const,
+      status: 404,
+    };
+  }
+  console.error(fallback, error);
+  return { error: fallback, code: "write_failed" as const, status: 500 };
+}
 
 export async function GET(request: Request) {
   const session = await requireAdminSession();
@@ -36,12 +70,15 @@ export async function POST(request: Request) {
   const session = await requireAdminSession();
   if (isUnauthorized(session)) return session;
 
+  const blocked = rejectEphemeralWrites();
+  if (blocked) return blocked;
+
   try {
     const body = (await request.json()) as ProjectPayload;
     const lang = toLangCode(body.lang ?? "en");
 
     if (!body.title || !body.category || !body.year || !body.description || !body.image) {
-      return NextResponse.json({ error: "Missing required project fields" }, { status: 400 });
+      return NextResponse.json({ error: "Заполни title, category, year, description и image" }, { status: 400 });
     }
 
     const count = await prisma.project.count({ where: { lang } });
@@ -62,7 +99,11 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(project, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: "Failed to create project" }, { status: 500 });
+  } catch (error) {
+    const mapped = mapWriteError(error, "Не удалось создать проект");
+    return NextResponse.json(
+      { error: mapped.error, code: mapped.code },
+      { status: mapped.status }
+    );
   }
 }

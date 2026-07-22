@@ -9,6 +9,7 @@ import {
   serializeContactChannels,
   type ContactChannel,
 } from "@/lib/contact-channels";
+import { ephemeralWriteError, isEphemeralDatabase } from "@/lib/db-mode";
 
 type PortfolioPayload = {
   lang?: LangCode;
@@ -99,6 +100,13 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   const session = await requireAdminSession();
   if (isUnauthorized(session)) return session;
+
+  if (isEphemeralDatabase()) {
+    return NextResponse.json(
+      { error: ephemeralWriteError(), code: "ephemeral_db" },
+      { status: 503 }
+    );
+  }
 
   try {
     const body = (await request.json()) as PortfolioPayload;
@@ -200,7 +208,8 @@ export async function PUT(request: Request) {
 
     const content = await getPortfolioContent(lang);
     return NextResponse.json(content);
-  } catch {
-    return NextResponse.json({ error: "Failed to save portfolio" }, { status: 500 });
+  } catch (error) {
+    console.error("Failed to save portfolio", error);
+    return NextResponse.json({ error: "Не удалось сохранить карточку", code: "write_failed" }, { status: 500 });
   }
 }
