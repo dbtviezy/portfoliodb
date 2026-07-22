@@ -7,7 +7,9 @@ export async function GET(request: Request) {
     const lang = toLangCode(searchParams.get("lang") ?? "en");
     const content = await getPortfolioContent(lang);
     return NextResponse.json(content);
-  } catch {
-    return NextResponse.json({ error: "Content not found" }, { status: 404 });
+  } catch (error) {
+    console.error("Content API error:", error);
+    const message = error instanceof Error ? error.message : "Content not found";
+    return NextResponse.json({ error: message }, { status: 404 });
   }
 }

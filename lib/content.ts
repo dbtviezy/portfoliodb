@@ -81,6 +81,9 @@ export async function getPortfolioContent(langInput: LangCode | "RU" | "EN"): Pr
     ? toLangCode(langInput.toUpperCase() as "RU" | "EN")
     : (langInput as LangCode);
 
+  const { ensurePortfolioSeeded } = await import("@/lib/ensure-seed");
+  await ensurePortfolioSeeded();
+
   const [portfolio, skills, expertise, projects] = await Promise.all([
     prisma.portfolio.findFirst({ where: { lang } }),
     prisma.skill.findMany({ where: { lang }, orderBy: { order: "asc" } }),
