@@ -1,17 +1,13 @@
 import { config } from "dotenv";
-import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import en from "../locales/en.json";
 import ru from "../locales/ru.json";
+import { createPrismaClient } from "../lib/create-prisma";
 
 config({ path: ".env.example" });
 config({ path: ".env" });
 
-if (!process.env.DATABASE_URL) {
-  process.env.DATABASE_URL = "file:./dev.db";
-}
-
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 type LocaleData = typeof en;
 

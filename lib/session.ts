@@ -19,9 +19,11 @@ export async function createSessionToken(payload: AdminSession): Promise<string>
 }
 
 export function authCookieOptions(maxAgeSeconds = 60 * 60 * 24 * 7) {
+  // Secure cookies on HTTPS production hosts (Vercel/Node set NODE_ENV=production).
+  const secure = process.env.NODE_ENV === "production";
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure,
     sameSite: "lax" as const,
     path: "/",
     maxAge: maxAgeSeconds,

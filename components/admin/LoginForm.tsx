@@ -25,11 +25,13 @@ export default function LoginForm() {
 
       if (!response.ok) {
         const data = await response.json();
-        setError(
-          data.error === "Invalid credentials"
-            ? "Неверный email или пароль"
-            : (data.error ?? "Login failed")
-        );
+        if (data.error === "Invalid credentials" || data.code === "invalid_credentials") {
+          setError("Неверный email или пароль");
+        } else if (data.code === "database" || data.code === "misconfigured") {
+          setError(data.error ?? "Server configuration error");
+        } else {
+          setError(data.error ?? "Login failed");
+        }
         setLoading(false);
         return;
       }

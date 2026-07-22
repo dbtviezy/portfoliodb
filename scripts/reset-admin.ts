@@ -1,15 +1,11 @@
 import { config } from "dotenv";
 import bcrypt from "bcryptjs";
-import { PrismaClient } from "@prisma/client";
+import { createPrismaClient } from "../lib/create-prisma";
 
 config({ path: ".env.example" });
 config({ path: ".env" });
 
-if (!process.env.DATABASE_URL) {
-  process.env.DATABASE_URL = "file:./dev.db";
-}
-
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 async function main() {
   const email = (process.env.ADMIN_EMAIL ?? "admin@portfoliodb.local").toLowerCase();
