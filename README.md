@@ -47,7 +47,9 @@
 | `PUT /api/admin/portfolio` | Сохранить карточку / контакты / лейблы |
 | `GET·POST /api/admin/projects` | Список / создать проект |
 | `PUT·DELETE /api/admin/projects/[id]` | Обновить / удалить проект |
+| `POST /api/admin/upload` | Drag-and-drop загрузка фото (Vercel Blob / local) |
 | `GET /api/admin/db-status` | Режим базы: durable или ephemeral |
+| `components/admin/ImageUploader.tsx` | UI: перетащить фото / клик / URL |
 
 ### Данные и база
 | Файл | Зачем |
@@ -60,6 +62,7 @@
 | `lib/db-mode.ts` | Понимает durable vs ephemeral; блокирует «ложные» сохранения |
 | `lib/bootstrap-admin.ts` | Первый вход: если админов 0 — создаёт из `ADMIN_EMAIL` / `ADMIN_PASSWORD` |
 | `lib/contact-channels.ts` | Каналы связи (Email, Telegram, Behance…) |
+| `lib/storage.ts` | Куда класть фото: Vercel Blob или `public/uploads/` |
 | `middleware.ts` | Пускает в dashboard только с cookie (проверка JWT — в Node API) |
 
 ### Секреты (не коммитить)
@@ -70,6 +73,7 @@
 | `DATABASE_URL` | Локально: `file:./dev.db`. На Vercel для SQLite-файла — **не подходит** |
 | `TURSO_DATABASE_URL` | `libsql://…` — облачная БД на Vercel |
 | `TURSO_AUTH_TOKEN` | Токен Turso |
+| `BLOB_READ_WRITE_TOKEN` | Хранение фото Studio на Vercel Blob (**нужно для drag-and-drop на проде**) |
 
 `.env` в git **не** попадает. На Vercel секреты задаются только в  
 **Project → Settings → Environment Variables** (загрузка файла `.env` в репозиторий секреты **не** включает).
@@ -146,7 +150,18 @@ npm run admin:reset
 После переменных — **Redeploy**.  
 В Studio баннер про `/tmp` должен пропасть. Save проекта / карточки пишет в Turso → сайт читает оттуда.
 
-### 5. Вход
+### 5. Фото (drag-and-drop) — Vercel Blob
+1. Vercel → проект → **Storage** → **Create Database / Blob** (Public).  
+2. Vercel сам добавит `BLOB_READ_WRITE_TOKEN` в Environment Variables (проверь Production + Preview).  
+3. **Redeploy**.  
+4. В Studio: Card → Portrait или Work → проект — зона «Перетащи фото сюда».  
+5. URL картинки пишется в поле; не забудь **Save changes** / сохранить проект — ссылка уходит в Turso.
+
+Локально без Blob файлы кладутся в `public/uploads/` и открываются как `/uploads/...`.
+
+Лимит серверной загрузки ~**4.5 MB** (JPEG / PNG / WebP / GIF / AVIF).
+
+### 6. Вход
 `/studio` → `ADMIN_EMAIL` + `ADMIN_PASSWORD`.  
 Если таблица Admin пустая — первый успешный вход **сам создаст** админа (bootstrap).
 
@@ -155,11 +170,12 @@ npm run admin:reset
 ## Как устроен поток «изменил → увидел на сайте»
 
 ```
-Studio (Save)
+Studio (Save / Upload photo)
     → API /api/admin/...  (нужна cookie login)
-        → Prisma → Turso (прод) или file:./dev.db (локаль)
+        → фото → Vercel Blob (URL) или public/uploads
+        → тексты/URL → Prisma → Turso (прод) или file:./dev.db (локаль)
             → сайт /api/content читает ту же БД
-                → Hero / Projects / Contact показывают новое
+                → Hero / Projects / Contact / Bio показывают новое
 ```
 
 Без Turso на Vercel цепочка рвётся на шаге «записать в базу»: API отвечает понятной ошибкой вместо тихого «Failed to save project».
@@ -195,6 +211,7 @@ Build: `prisma generate` → `prepare-deploy-db` (снимок для авари
 | Симптом | Что проверить |
 |---|---|
 | `Failed to save project` / баннер про Turso | Нет `TURSO_*` в Vercel или не сделан Redeploy |
+| Не грузится фото / ошибка про Blob Store | Создай Blob в Vercel Storage и проверь `BLOB_READ_WRITE_TOKEN` + Redeploy |
 | `Неверный email или пароль` | `ADMIN_*` в Vercel; или `npm run admin:reset` с Turso-env |
 | `JWT_SECRET is required` | Задай `JWT_SECRET` в Vercel |
 | Контент пустой / 404 content | Схема не применена к Turso или база пустая → seed / первый заход на сайт сидит из locales |

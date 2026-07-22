@@ -19,6 +19,7 @@ import {
   StudioLabel,
   StudioPanel,
 } from "@/components/admin/studio-ui";
+import { ImageUploader } from "@/components/admin/ImageUploader";
 
 type AdminLang = "en" | "ru";
 
@@ -380,8 +381,9 @@ export default function AdminDashboard() {
                   setContent({ ...content, hero: { ...content.hero, text1: value } })
                 }
               />
-              <StudioField
-                label="Portrait image URL"
+              <ImageUploader
+                label="Portrait photo"
+                folder="portrait"
                 value={content.about.profileImage}
                 onChange={(value) =>
                   setContent({ ...content, about: { ...content.about, profileImage: value } })
@@ -689,7 +691,12 @@ export default function AdminDashboard() {
                 <StudioField label="Title" value={currentProject.title} onChange={(value) => setEditingProject({ ...currentProject, title: value })} />
                 <StudioField label="Category" value={currentProject.category} onChange={(value) => setEditingProject({ ...currentProject, category: value })} />
                 <StudioField label="Year" value={currentProject.year} onChange={(value) => setEditingProject({ ...currentProject, year: value })} />
-                <StudioField label="Image URL" value={currentProject.image} onChange={(value) => setEditingProject({ ...currentProject, image: value })} />
+                <ImageUploader
+                  label="Project photo"
+                  folder="projects"
+                  value={currentProject.image}
+                  onChange={(value) => setEditingProject({ ...currentProject, image: value })}
+                />
                 <StudioField label="Short description" value={currentProject.description} onChange={(value) => setEditingProject({ ...currentProject, description: value })} multiline />
                 <StudioField
                   label="Full details"
