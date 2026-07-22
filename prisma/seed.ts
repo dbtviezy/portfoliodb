@@ -4,8 +4,11 @@ import en from "../locales/en.json";
 import ru from "../locales/ru.json";
 import { createPrismaClient } from "../lib/create-prisma";
 
-config({ path: ".env.example" });
-config({ path: ".env" });
+// Do not load dotenv during Vercel build / prepare-deploy-db — host env wins.
+if (!process.env.VERCEL && !process.env.SEED_NO_DOTENV) {
+  config({ path: ".env.example" });
+  config({ path: ".env" });
+}
 
 const prisma = createPrismaClient();
 
@@ -117,20 +120,25 @@ async function seedLanguage(lang: "en" | "ru", data: LocaleData) {
 }
 
 async function main() {
-  const email = (process.env.ADMIN_EMAIL ?? "admin@portfoliodb.local").toLowerCase();
-  const password = process.env.ADMIN_PASSWORD ?? "admin12345";
-  const passwordHash = bcrypt.hashSync(password, 12);
+  const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  const password = process.env.ADMIN_PASSWORD;
 
-  await prisma.admin.upsert({
-    where: { email },
-    create: { email, password: passwordHash },
-    update: { password: passwordHash },
-  });
+  if (email && password) {
+    const passwordHash = bcrypt.hashSync(password, 12);
+    await prisma.admin.upsert({
+      where: { email },
+      create: { email, password: passwordHash },
+      update: { password: passwordHash },
+    });
+    console.log(`Seeded admin user: ${email}`);
+  } else {
+    console.log(
+      "Skipping admin seed (set ADMIN_EMAIL + ADMIN_PASSWORD). First Studio login can bootstrap when the Admin table is empty."
+    );
+  }
 
   await seedLanguage("en", en);
   await seedLanguage("ru", ru);
-
-  console.log(`Seeded admin user: ${email}`);
 }
 
 main()

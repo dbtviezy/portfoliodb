@@ -9,7 +9,9 @@ export type LoginErrorResponse = {
 function isSqliteEphemeralHint(): boolean {
   const url = process.env.DATABASE_URL ?? "";
   const hasTurso = Boolean(process.env.TURSO_DATABASE_URL?.trim());
-  return !hasTurso && (url.startsWith("file:") || !url);
+  const hasDeployFallback = Boolean(process.env.VERCEL);
+  // On Vercel we ship prisma/deploy.db → /tmp; only hint Turso when that also fails.
+  return !hasTurso && !hasDeployFallback && (url.startsWith("file:") || !url);
 }
 
 /** Map thrown errors to safe client messages (no secrets). */

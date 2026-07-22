@@ -27,8 +27,12 @@ export default function LoginForm() {
         const data = await response.json();
         if (data.error === "Invalid credentials" || data.code === "invalid_credentials") {
           setError("Неверный email или пароль");
-        } else if (data.code === "database" || data.code === "misconfigured") {
-          setError(data.error ?? "Server configuration error");
+        } else if (data.code === "misconfigured") {
+          setError("На сервере не задан JWT_SECRET (Vercel → Environment Variables).");
+        } else if (data.code === "database") {
+          setError(
+            "База недоступна. В Vercel задай JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD и задеплой заново. Для постоянных правок — Turso (TURSO_DATABASE_URL + TURSO_AUTH_TOKEN)."
+          );
         } else {
           setError(data.error ?? "Login failed");
         }

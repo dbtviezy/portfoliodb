@@ -42,6 +42,17 @@ Login always verifies bcrypt against the `Admin` row in the database.
 
 Uploading a `.env` file into a Git deploy does **not** reliably set secrets on Vercel. Use **Project Settings → Environment Variables**.
 
+### Vercel without Turso (temporary)
+
+`npm run build` creates `prisma/deploy.db` (schema + seed). On Vercel, if Turso is not set, the app copies that file to `/tmp` so Studio login and content work.
+
+**Caveat:** `/tmp` is per-instance and ephemeral — studio edits can disappear on cold starts. For durable CMS data, configure Turso (Option A).
+
+Required Vercel env even for the temporary path:
+
+- `JWT_SECRET`
+- `ADMIN_EMAIL` / `ADMIN_PASSWORD` (first login bootstraps admin if the Admin table is empty after seed)
+
 ### Option A — Vercel + Turso (recommended)
 
 1. Create a free DB at [turso.tech](https://turso.tech) and copy URL + token.

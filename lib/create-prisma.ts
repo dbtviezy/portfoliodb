@@ -1,6 +1,7 @@
 import { createClient } from "@libsql/client";
 import { PrismaLibSQL } from "@prisma/adapter-libsql";
 import { PrismaClient } from "@prisma/client";
+import { resolveServerlessSqliteUrl } from "@/lib/runtime-db";
 
 function prismaLog() {
   return process.env.NODE_ENV === "development"
@@ -10,8 +11,8 @@ function prismaLog() {
 
 /**
  * Local: DATABASE_URL=file:./dev.db (default).
- * Production on serverless: set TURSO_DATABASE_URL + TURSO_AUTH_TOKEN
- * (libSQL). Plain file: SQLite will not persist on Vercel.
+ * Production on serverless: prefer TURSO_DATABASE_URL + TURSO_AUTH_TOKEN.
+ * Fallback: build-time prisma/deploy.db copied to /tmp (ephemeral).
  */
 export function createPrismaClient(): PrismaClient {
   const tursoUrl =
@@ -29,6 +30,14 @@ export function createPrismaClient(): PrismaClient {
     const adapter = new PrismaLibSQL(libsql);
     return new PrismaClient({
       adapter,
+      log: [...prismaLog()],
+    });
+  }
+
+  const serverlessFile = resolveServerlessSqliteUrl();
+  if (serverlessFile) {
+    process.env.DATABASE_URL = serverlessFile;
+    return new PrismaClient({
       log: [...prismaLog()],
     });
   }

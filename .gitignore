@@ -39,6 +39,8 @@ yarn-error.log*
 *.db-journal
 prisma/*.db
 prisma/*.db-journal
+# Generated during `npm run build` for Vercel /tmp fallback — do not commit
+prisma/deploy.db
 
 # vercel
 .vercel
