@@ -13,7 +13,8 @@
     "db:seed": "dotenv -e .env.example -e .env -- prisma db seed",
     "db:setup": "npm run db:generate && npm run db:push && npm run db:seed",
     "admin:reset": "dotenv -e .env.example -e .env -- npx tsx scripts/reset-admin.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "db:turso": "npx tsx scripts/setup-turso.ts"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
