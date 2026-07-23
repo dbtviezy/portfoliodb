@@ -113,7 +113,7 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
                   poster={activeImage}
                   mode="modal"
                 />
-              ) : (
+              ) : activeImage ? (
                 <button
                   type="button"
                   className="group relative h-full w-full cursor-zoom-in overflow-hidden"
@@ -131,6 +131,18 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
                     {lang === "RU" ? "Увеличить" : "Enlarge"}
                   </span>
                 </button>
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-[var(--bg-elevated)] px-6 text-center">
+                  <p className="text-sm text-[var(--text-faint)]">
+                    {videos.length > 0
+                      ? lang === "RU"
+                        ? "Видео ниже · фото не добавлено"
+                        : "Video below · no still yet"
+                      : lang === "RU"
+                        ? "Фото пока нет"
+                        : "No photo yet"}
+                  </p>
+                </div>
               )}
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[var(--bg-panel)] via-transparent to-transparent" />
               <button

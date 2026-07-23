@@ -28,6 +28,17 @@ export default function FramedImage({
   loading,
 }: FramedImageProps) {
   const framed = imageFrameStyle(frame);
+  if (!src?.trim()) {
+    return (
+      <div
+        className={`flex h-full w-full items-center justify-center bg-[var(--bg-elevated)] text-xs text-[var(--text-faint)] ${className}`}
+        style={style}
+        aria-label={alt}
+      >
+        <span className="px-3 text-center opacity-70">{alt || "—"}</span>
+      </div>
+    );
+  }
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img

@@ -120,9 +120,9 @@ export async function POST(request: Request) {
     const media = mediaFromPayload(body);
     const videoMedia = videosFromPayload(body);
 
-    if (!body.title || !body.category || !body.year || !body.description || !media.image) {
+    if (!body.title || !body.category || !body.year || !body.description) {
       return NextResponse.json(
-        { error: "Заполни title, category, year, description и хотя бы одно фото" },
+        { error: "Заполни title, category, year и description" },
         { status: 400 }
       );
     }
