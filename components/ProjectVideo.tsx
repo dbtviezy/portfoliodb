@@ -1,15 +1,18 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { parseExternalVideo } from "@/lib/external-video";
+import { buildEmbedPlaybackUrl, parseExternalVideo } from "@/lib/external-video";
 
 type ProjectVideoProps = {
   src: string;
   poster?: string;
   className?: string;
-  /** Card hover loops vs modal hero */
-  mode?: "card" | "modal";
+  /** Card hover loops vs modal hero vs cinema theater */
+  mode?: "card" | "modal" | "theater";
   style?: CSSProperties;
+  autoplay?: boolean;
+  muted?: boolean;
+  controls?: boolean;
 };
 
 /**
@@ -22,6 +25,9 @@ export function ProjectVideo({
   className = "",
   mode = "modal",
   style,
+  autoplay,
+  muted,
+  controls,
 }: ProjectVideoProps) {
   const url = src.trim();
   if (!url) return null;
@@ -32,35 +38,40 @@ export function ProjectVideo({
     // Cards keep the still cover; iframe autoplay on every card is too heavy.
     if (mode === "card") return null;
 
-    const embedSrc =
-      external.provider === "rutube"
-        ? `${external.embedUrl}?autoplay=1&muted=1`
-        : external.provider === "youtube"
-          ? `${external.embedUrl}&autoplay=1&mute=1`
-          : `${external.embedUrl}?autoplay=1&muted=1`;
+    const wantAutoplay = autoplay ?? true;
+    const wantMuted = muted ?? mode !== "theater";
 
     return (
       <iframe
         title="Project video"
-        src={embedSrc}
+        src={buildEmbedPlaybackUrl(external, {
+          autoplay: wantAutoplay,
+          muted: wantMuted,
+        })}
         className={className || "h-full w-full border-0"}
         style={style}
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
         allowFullScreen
         referrerPolicy="strict-origin-when-cross-origin"
       />
     );
   }
 
+  const fileAutoplay = autoplay ?? true;
+  const fileMuted = muted ?? mode !== "theater";
+  const fileControls = controls ?? mode === "theater";
+  const fileLoop = mode !== "theater";
+
   return (
     <video
       className={className}
       src={url}
       poster={poster}
-      muted
-      loop
+      muted={fileMuted}
+      loop={fileLoop}
       playsInline
-      autoPlay
+      autoPlay={fileAutoplay}
+      controls={fileControls}
       style={style}
     />
   );

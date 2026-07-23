@@ -6,8 +6,14 @@ import type { ProjectItem } from "@/lib/content";
 import { normalizeExternalUrl } from "@/lib/project-links";
 import { resolveProjectGallery } from "@/lib/project-images";
 import { resolveProjectVideos } from "@/lib/project-videos";
-import { parseExternalVideo, providerLabel, isDirectVideoFileUrl } from "@/lib/external-video";
+import {
+  isDirectVideoFileUrl,
+  parseExternalVideo,
+  providerLabel,
+  videoPosterUrl,
+} from "@/lib/external-video";
 import PhotoLightbox from "@/components/PhotoLightbox";
+import VideoTheater from "@/components/VideoTheater";
 import FramedImage from "@/components/FramedImage";
 import { ProjectVideo } from "@/components/ProjectVideo";
 
@@ -21,6 +27,7 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
   const [activeIndex, setActiveIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
+  const [theaterOpen, setTheaterOpen] = useState(false);
 
   const gallery = useMemo(
     () => (project ? resolveProjectGallery(project.image, project.images ?? []) : []),
@@ -37,10 +44,11 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
     setActiveIndex(0);
     setLightboxOpen(false);
     setActiveVideoIndex(0);
+    setTheaterOpen(false);
   }, [project?.id, project?.image, project?.video]);
 
   useEffect(() => {
-    if (!project || lightboxOpen) return;
+    if (!project || lightboxOpen || theaterOpen) return;
 
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -61,7 +69,7 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
       document.body.style.overflow = previous;
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [project, onClose, gallery.length, lightboxOpen]);
+  }, [project, onClose, gallery.length, lightboxOpen, theaterOpen]);
 
   const links = project?.links?.filter((link) => link.label && link.url) ?? [];
   const summary = project?.description?.trim() || "";
@@ -69,14 +77,20 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
   const primaryVideo = videos[0] || "";
   const completed = project?.completed !== false;
   const activeImage = gallery[activeIndex] || project?.image || "";
-  // Cover is always a still photo. Rutube/YouTube play in the Videos block below —
+  // Cover is always a still photo. Rutube/YouTube open in VideoTheater —
   // never replace the hero with an embed. Short uploaded MP4 can still loop on cover.
   const showFileLoopOnCover = Boolean(
     primaryVideo &&
       isDirectVideoFileUrl(primaryVideo) &&
       activeIndex === 0 &&
-      !lightboxOpen
+      !lightboxOpen &&
+      !theaterOpen
   );
+
+  const openTheater = (index = 0) => {
+    setActiveVideoIndex(index);
+    setTheaterOpen(true);
+  };
 
   return (
     <AnimatePresence>
@@ -132,16 +146,25 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
                   </span>
                 </button>
               ) : (
-                <div className="flex h-full w-full items-center justify-center bg-[var(--bg-elevated)] px-6 text-center">
+                <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-[var(--bg-elevated)] px-6 text-center">
                   <p className="text-sm text-[var(--text-faint)]">
                     {videos.length > 0
                       ? lang === "RU"
-                        ? "Видео ниже · фото не добавлено"
-                        : "Video below · no still yet"
+                        ? "Фото не добавлено"
+                        : "No still yet"
                       : lang === "RU"
                         ? "Фото пока нет"
                         : "No photo yet"}
                   </p>
+                  {videos.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => openTheater(0)}
+                      className="rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--bg-panel)] px-4 py-2 text-sm text-[var(--text)] transition hover:border-[var(--accent)]"
+                    >
+                      {lang === "RU" ? "Смотреть видео" : "Watch video"}
+                    </button>
+                  ) : null}
                 </div>
               )}
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[var(--bg-panel)] via-transparent to-transparent" />
@@ -174,6 +197,22 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
                     →
                   </button>
                 </>
+              ) : null}
+
+              {videos.length > 0 && activeImage ? (
+                <button
+                  type="button"
+                  onClick={() => openTheater(0)}
+                  className="absolute bottom-3 left-3 z-[2] inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/50 px-3 py-1.5 text-[11px] text-white/90 backdrop-blur transition hover:bg-black/65 sm:bottom-4 sm:left-4 sm:text-xs"
+                >
+                  <span
+                    aria-hidden
+                    className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] text-black"
+                  >
+                    ▶
+                  </span>
+                  {lang === "RU" ? "Смотреть" : "Watch"}
+                </button>
               ) : null}
 
               {showFileLoopOnCover && activeImage ? (
@@ -253,43 +292,56 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
 
               {videos.length > 0 ? (
                 <div className="mb-6">
-                  <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--text-faint)]">
-                    {lang === "RU" ? "Видео" : "Videos"}
-                  </p>
-                  {videos.length > 1 ? (
-                    <div className="mb-3 flex flex-wrap gap-2">
-                      {videos.map((url, index) => {
-                        const parsed = parseExternalVideo(url);
-                        const label = parsed
-                          ? `${providerLabel(parsed.provider)} ${index + 1}`
-                          : lang === "RU"
-                            ? `Видео ${index + 1}`
-                            : `Video ${index + 1}`;
-                        const active = index === activeVideoIndex;
-                        return (
-                          <button
-                            key={`${url}-${index}`}
-                            type="button"
-                            onClick={() => setActiveVideoIndex(index)}
-                            className={`rounded-[var(--radius-md)] border px-3 py-1.5 text-xs transition ${
-                              active
-                                ? "border-[var(--border-strong)] bg-[var(--bg-elevated)] text-[var(--text)]"
-                                : "border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)]"
-                            }`}
-                          >
-                            {label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : null}
-                  <div className="aspect-video overflow-hidden rounded-[var(--radius-md)] border border-[var(--border)] bg-black/40">
-                    <ProjectVideo
-                      className="h-full w-full"
-                      src={videos[activeVideoIndex] || primaryVideo}
-                      poster={activeImage}
-                      mode="modal"
-                    />
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--text-faint)]">
+                      {lang === "RU" ? "Видео" : "Videos"}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => openTheater(activeVideoIndex)}
+                      className="text-xs text-[var(--text-muted)] transition hover:text-[var(--text)] hover:underline"
+                    >
+                      {lang === "RU" ? "Открыть плеер" : "Open player"}
+                    </button>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {videos.map((url, index) => {
+                      const parsed = parseExternalVideo(url);
+                      const thumb = videoPosterUrl(url) || activeImage;
+                      const label = parsed
+                        ? providerLabel(parsed.provider)
+                        : lang === "RU"
+                          ? "Файл"
+                          : "File";
+                      return (
+                        <button
+                          key={`${url}-card-${index}`}
+                          type="button"
+                          onClick={() => openTheater(index)}
+                          className="group relative aspect-video overflow-hidden rounded-[var(--radius-md)] border border-[var(--border)] bg-black/40 text-left transition hover:border-[var(--border-strong)]"
+                        >
+                          {thumb ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={thumb}
+                              alt=""
+                              className="h-full w-full object-cover opacity-90 transition duration-500 group-hover:scale-[1.03] group-hover:opacity-100"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center bg-[var(--bg-elevated)] text-xs text-[var(--text-faint)]">
+                              {label}
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                          <span className="absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-black/45 text-white shadow-[0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur transition group-hover:scale-105">
+                            ▶
+                          </span>
+                          <span className="absolute bottom-2.5 left-2.5 text-[11px] text-white/85">
+                            {videos.length > 1 ? `${index + 1}. ${label}` : label}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               ) : null}
@@ -353,6 +405,17 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
             lang={lang}
             onClose={() => setLightboxOpen(false)}
             onIndexChange={setActiveIndex}
+          />
+
+          <VideoTheater
+            open={theaterOpen}
+            videos={videos}
+            index={activeVideoIndex}
+            title={project.title}
+            lang={lang}
+            posterFallback={activeImage}
+            onClose={() => setTheaterOpen(false)}
+            onIndexChange={setActiveVideoIndex}
           />
         </motion.div>
       )}

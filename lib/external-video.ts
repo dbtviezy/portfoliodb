@@ -92,3 +92,45 @@ export function providerLabel(provider: ExternalVideoProvider): string {
       return "Vimeo";
   }
 }
+
+/** Embed URL with playback flags for theater / inline players. */
+export function buildEmbedPlaybackUrl(
+  external: ExternalVideo,
+  options?: { autoplay?: boolean; muted?: boolean }
+): string {
+  const autoplay = options?.autoplay ?? false;
+  const muted = options?.muted ?? false;
+
+  if (external.provider === "rutube") {
+    const params = new URLSearchParams();
+    if (autoplay) params.set("autoplay", "1");
+    if (muted) params.set("muted", "1");
+    const query = params.toString();
+    return query ? `${external.embedUrl}?${query}` : external.embedUrl;
+  }
+
+  if (external.provider === "youtube") {
+    const params = new URLSearchParams({
+      rel: "0",
+      modestbranding: "1",
+      playsinline: "1",
+    });
+    if (autoplay) params.set("autoplay", "1");
+    if (muted) params.set("mute", "1");
+    return `https://www.youtube.com/embed/${external.id}?${params.toString()}`;
+  }
+
+  // Vimeo
+  const params = new URLSearchParams();
+  if (autoplay) params.set("autoplay", "1");
+  if (muted) params.set("muted", "1");
+  const query = params.toString();
+  return query ? `${external.embedUrl}?${query}` : external.embedUrl;
+}
+
+/** Best poster URL for a video link (platform thumb or empty for files). */
+export function videoPosterUrl(url: string): string {
+  const external = parseExternalVideo(url);
+  return external?.thumbnailCandidates[0] ?? "";
+}
+
