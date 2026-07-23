@@ -5,6 +5,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import type { ProjectItem } from "@/lib/content";
 import { normalizeExternalUrl } from "@/lib/project-links";
 import { resolveProjectGallery } from "@/lib/project-images";
+import { resolveProjectVideos } from "@/lib/project-videos";
+import { parseExternalVideo, providerLabel } from "@/lib/external-video";
 import PhotoLightbox from "@/components/PhotoLightbox";
 import FramedImage from "@/components/FramedImage";
 import { ProjectVideo } from "@/components/ProjectVideo";
@@ -18,16 +20,24 @@ type ProjectModalProps = {
 export default function ProjectModal({ project, lang, onClose }: ProjectModalProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [activeVideoIndex, setActiveVideoIndex] = useState(0);
 
   const gallery = useMemo(
     () => (project ? resolveProjectGallery(project.image, project.images ?? []) : []),
     [project]
   );
 
+  const videos = useMemo(
+    () =>
+      project ? resolveProjectVideos(project.video ?? "", project.videos ?? []) : [],
+    [project]
+  );
+
   useEffect(() => {
     setActiveIndex(0);
     setLightboxOpen(false);
-  }, [project?.id, project?.image]);
+    setActiveVideoIndex(0);
+  }, [project?.id, project?.image, project?.video]);
 
   useEffect(() => {
     if (!project || lightboxOpen) return;
@@ -56,10 +66,10 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
   const links = project?.links?.filter((link) => link.label && link.url) ?? [];
   const summary = project?.description?.trim() || "";
   const caseText = project?.detail?.trim() || "";
-  const video = project?.video?.trim() || "";
+  const primaryVideo = videos[0] || "";
   const completed = project?.completed !== false;
   const activeImage = gallery[activeIndex] || project?.image || "";
-  const showVideo = Boolean(video && activeIndex === 0 && !lightboxOpen);
+  const showVideo = Boolean(primaryVideo && activeIndex === 0 && !lightboxOpen);
 
   return (
     <AnimatePresence>
@@ -92,7 +102,7 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
               {showVideo ? (
                 <ProjectVideo
                   className="h-full w-full object-cover"
-                  src={video}
+                  src={primaryVideo}
                   poster={activeImage}
                   mode="modal"
                 />
@@ -164,6 +174,9 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
                   <p className="mb-2 text-xs text-[var(--text-faint)]">
                     {project.category} · {project.year}
                     {gallery.length > 1 ? ` · ${gallery.length} photos` : ""}
+                    {videos.length > 0
+                      ? ` · ${videos.length} ${lang === "RU" ? "видео" : "video"}`
+                      : ""}
                   </p>
                   <h2
                     id="project-modal-title"
@@ -216,6 +229,47 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
                       </button>
                     );
                   })}
+                </div>
+              ) : null}
+
+              {videos.length > 1 ? (
+                <div className="mb-6">
+                  <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--text-faint)]">
+                    {lang === "RU" ? "Видео" : "Videos"}
+                  </p>
+                  <div className="mb-3 flex flex-wrap gap-2">
+                    {videos.map((url, index) => {
+                      const parsed = parseExternalVideo(url);
+                      const label = parsed
+                        ? `${providerLabel(parsed.provider)} ${index + 1}`
+                        : lang === "RU"
+                          ? `Видео ${index + 1}`
+                          : `Video ${index + 1}`;
+                      const active = index === activeVideoIndex;
+                      return (
+                        <button
+                          key={`${url}-${index}`}
+                          type="button"
+                          onClick={() => setActiveVideoIndex(index)}
+                          className={`rounded-[var(--radius-md)] border px-3 py-1.5 text-xs transition ${
+                            active
+                              ? "border-[var(--border-strong)] bg-[var(--bg-elevated)] text-[var(--text)]"
+                              : "border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)]"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="aspect-video overflow-hidden rounded-[var(--radius-md)] border border-[var(--border)] bg-black/40">
+                    <ProjectVideo
+                      className="h-full w-full"
+                      src={videos[activeVideoIndex] || primaryVideo}
+                      poster={activeImage}
+                      mode="modal"
+                    />
+                  </div>
                 </div>
               ) : null}
 

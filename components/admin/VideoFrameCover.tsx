@@ -11,6 +11,8 @@ import {
 
 type VideoFrameCoverProps = {
   videoUrl: string;
+  /** When multiple videos exist, user can pick which one to grab a cover from. */
+  videoUrls?: string[];
   hasCover: boolean;
   folder?: string;
   onCover: (imageUrl: string) => void;
@@ -122,10 +124,27 @@ function ExternalCoverPanel({
  */
 export function VideoFrameCover({
   videoUrl,
+  videoUrls,
   hasCover,
   folder = "projects",
   onCover,
 }: VideoFrameCoverProps) {
+  const listKey = (videoUrls?.length ? videoUrls : videoUrl ? [videoUrl] : [])
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .join("\n");
+  const list = listKey ? listKey.split("\n") : [];
+  const [selectedUrl, setSelectedUrl] = useState(list[0] ?? "");
+  const activeUrl = list.includes(selectedUrl) ? selectedUrl : list[0] ?? "";
+
+  useEffect(() => {
+    if (!list.length) {
+      setSelectedUrl("");
+      return;
+    }
+    setSelectedUrl((prev) => (list.includes(prev) ? prev : list[0]));
+  }, [listKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const [duration, setDuration] = useState(0);
   const [current, setCurrent] = useState(0);
@@ -134,8 +153,8 @@ export function VideoFrameCover({
   const [error, setError] = useState("");
   const [loadError, setLoadError] = useState("");
 
-  const external = parseExternalVideo(videoUrl);
-  const isFile = isDirectVideoFileUrl(videoUrl);
+  const external = parseExternalVideo(activeUrl);
+  const isFile = isDirectVideoFileUrl(activeUrl);
 
   useEffect(() => {
     setReady(false);
@@ -143,7 +162,7 @@ export function VideoFrameCover({
     setCurrent(0);
     setError("");
     setLoadError("");
-  }, [videoUrl]);
+  }, [activeUrl]);
 
   const seekTo = useCallback((time: number) => {
     const video = videoRef.current;
@@ -201,112 +220,145 @@ export function VideoFrameCover({
     }
   }, [folder, onCover, ready]);
 
-  if (!videoUrl.trim()) return null;
+  if (!activeUrl.trim()) return null;
+
+  const picker =
+    list.length > 1 ? (
+      <label className="block space-y-1.5">
+        <span className="text-xs text-[var(--text-muted)]">Видео для обложки</span>
+        <select
+          value={activeUrl}
+          onChange={(event) => setSelectedUrl(event.target.value)}
+          className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text)] outline-none"
+        >
+          {list.map((url, index) => {
+            const parsed = parseExternalVideo(url);
+            const label = parsed
+              ? `${index + 1}. ${providerLabel(parsed.provider)}`
+              : `${index + 1}. файл / URL`;
+            return (
+              <option key={`${url}-${index}`} value={url}>
+                {label}
+              </option>
+            );
+          })}
+        </select>
+      </label>
+    ) : null;
 
   if (external) {
     return (
-      <ExternalCoverPanel
-        external={external}
-        hasCover={hasCover}
-        folder={folder}
-        onCover={onCover}
-      />
+      <div className="space-y-3">
+        {picker}
+        <ExternalCoverPanel
+          external={external}
+          hasCover={hasCover}
+          folder={folder}
+          onCover={onCover}
+        />
+      </div>
     );
   }
 
   if (!isFile) {
     return (
-      <div className="space-y-2 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-soft)] p-3 sm:p-4">
-        <StudioLabel>Обложка из видео</StudioLabel>
-        <p className="text-xs text-[var(--text-faint)]">
-          Сейчас в поле видео не файл и не Rutube/YouTube. Вставь ссылку{" "}
-          <span className="text-[var(--text-muted)]">rutube.ru/video/…</span> или
-          загрузи короткий MP4/WebM — тогда можно будет поставить кадр/превью на
-          обложку.
-        </p>
+      <div className="space-y-3">
+        {picker}
+        <div className="space-y-2 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-soft)] p-3 sm:p-4">
+          <StudioLabel>Обложка из видео</StudioLabel>
+          <p className="text-xs text-[var(--text-faint)]">
+            Сейчас в поле видео не файл и не Rutube/YouTube. Вставь ссылку{" "}
+            <span className="text-[var(--text-muted)]">rutube.ru/video/…</span> или
+            загрузи короткий MP4/WebM — тогда можно будет поставить кадр/превью на
+            обложку.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div
-      className={`space-y-3 rounded-[var(--radius-md)] border p-3 sm:p-4 ${
-        hasCover
-          ? "border-[var(--border)] bg-[var(--bg-soft)]"
-          : "border-[var(--accent)]/40 bg-[var(--accent)]/5"
-      }`}
-    >
-      <div>
-        <StudioLabel>Обложка из видео</StudioLabel>
-        <p className="mt-1 text-xs text-[var(--text-faint)]">
-          {hasCover
-            ? "Можно заменить обложку кадром из loop — подвигай таймлайн и сними кадр."
-            : "Фото ещё нет — выбери кадр из видео и поставь его на обложку."}
-        </p>
-      </div>
-
-      <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--border)] bg-black/40">
-        <video
-          ref={videoRef}
-          src={videoUrl}
-          className="aspect-video w-full object-contain"
-          muted
-          playsInline
-          preload="metadata"
-          crossOrigin="anonymous"
-          onLoadedMetadata={(event) => {
-            const video = event.currentTarget;
-            setDuration(video.duration || 0);
-            setReady(true);
-            setLoadError("");
-            const start = Math.min(0.25, (video.duration || 1) * 0.05);
-            video.currentTime = start;
-            setCurrent(start);
-          }}
-          onSeeked={(event) => setCurrent(event.currentTarget.currentTime)}
-          onTimeUpdate={(event) => setCurrent(event.currentTarget.currentTime)}
-          onError={() =>
-            setLoadError(
-              "Видео не открылось в браузере. Нужен прямой MP4/WebM (не страница Rutube)."
-            )
-          }
-        />
-      </div>
-
-      <label className="block space-y-1.5">
-        <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
-          <span>Кадр</span>
-          <span className="font-mono text-[var(--text-faint)]">
-            {formatTime(current)} / {formatTime(duration)}
-          </span>
-        </div>
-        <input
-          type="range"
-          min={0}
-          max={duration || 0}
-          step={0.05}
-          value={Math.min(current, duration || 0)}
-          disabled={!ready || busy}
-          onChange={(event) => seekTo(Number(event.target.value))}
-          className="w-full accent-[var(--accent)]"
-        />
-      </label>
-
-      <button
-        type="button"
-        disabled={!ready || busy}
-        onClick={() => void captureAndUpload()}
-        className="rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--bg-elevated)] px-3 py-2 text-sm text-[var(--text)] transition hover:border-[var(--accent)] disabled:opacity-50"
+    <div className="space-y-3">
+      {picker}
+      <div
+        className={`space-y-3 rounded-[var(--radius-md)] border p-3 sm:p-4 ${
+          hasCover
+            ? "border-[var(--border)] bg-[var(--bg-soft)]"
+            : "border-[var(--accent)]/40 bg-[var(--accent)]/5"
+        }`}
       >
-        {busy
-          ? "Загрузка кадра…"
-          : hasCover
-            ? "Заменить обложку этим кадром"
-            : "Поставить кадр на обложку"}
-      </button>
+        <div>
+          <StudioLabel>Обложка из видео</StudioLabel>
+          <p className="mt-1 text-xs text-[var(--text-faint)]">
+            {hasCover
+              ? "Можно заменить обложку кадром из loop — подвигай таймлайн и сними кадр."
+              : "Фото ещё нет — выбери кадр из видео и поставь его на обложку."}
+          </p>
+        </div>
 
-      {loadError ? <p className="text-sm text-[var(--danger)]">{loadError}</p> : null}
-      {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
+        <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--border)] bg-black/40">
+          <video
+            ref={videoRef}
+            src={activeUrl}
+            className="aspect-video w-full object-contain"
+            muted
+            playsInline
+            preload="metadata"
+            crossOrigin="anonymous"
+            onLoadedMetadata={(event) => {
+              const video = event.currentTarget;
+              setDuration(video.duration || 0);
+              setReady(true);
+              setLoadError("");
+              const start = Math.min(0.25, (video.duration || 1) * 0.05);
+              video.currentTime = start;
+              setCurrent(start);
+            }}
+            onSeeked={(event) => setCurrent(event.currentTarget.currentTime)}
+            onTimeUpdate={(event) => setCurrent(event.currentTarget.currentTime)}
+            onError={() =>
+              setLoadError(
+                "Видео не открылось в браузере. Нужен прямой MP4/WebM (не страница Rutube)."
+              )
+            }
+          />
+        </div>
+
+        <label className="block space-y-1.5">
+          <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
+            <span>Кадр</span>
+            <span className="font-mono text-[var(--text-faint)]">
+              {formatTime(current)} / {formatTime(duration)}
+            </span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={duration || 0}
+            step={0.05}
+            value={Math.min(current, duration || 0)}
+            disabled={!ready || busy}
+            onChange={(event) => seekTo(Number(event.target.value))}
+            className="w-full accent-[var(--accent)]"
+          />
+        </label>
+
+        <button
+          type="button"
+          disabled={!ready || busy}
+          onClick={() => void captureAndUpload()}
+          className="rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--bg-elevated)] px-3 py-2 text-sm text-[var(--text)] transition hover:border-[var(--accent)] disabled:opacity-50"
+        >
+          {busy
+            ? "Загрузка кадра…"
+            : hasCover
+              ? "Заменить обложку этим кадром"
+              : "Поставить кадр на обложку"}
+        </button>
+
+        {loadError ? <p className="text-sm text-[var(--danger)]">{loadError}</p> : null}
+        {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
+      </div>
     </div>
   );
 }

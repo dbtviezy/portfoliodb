@@ -22,10 +22,11 @@ import {
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import { GalleryUploader } from "@/components/admin/GalleryUploader";
 import { ImageFrameEditor } from "@/components/admin/ImageFrameEditor";
-import { VideoUploader } from "@/components/admin/VideoUploader";
+import { VideosEditor } from "@/components/admin/VideosEditor";
 import { VideoFrameCover } from "@/components/admin/VideoFrameCover";
 import { ProjectCardImageDrop } from "@/components/admin/ProjectCardImageDrop";
 import { resolveProjectGallery, syncCoverFromGallery } from "@/lib/project-images";
+import { resolveProjectVideos, syncPrimaryFromVideos } from "@/lib/project-videos";
 import { DEFAULT_IMAGE_FRAME, parseImageFrame } from "@/lib/image-frame";
 
 type AdminLang = "en" | "ru";
@@ -49,6 +50,7 @@ const emptyProject: ProjectItem = {
   images: [],
   imageFrame: { ...DEFAULT_IMAGE_FRAME },
   video: "",
+  videos: [],
   links: [],
   featured: false,
   completed: true,
@@ -57,6 +59,7 @@ const emptyProject: ProjectItem = {
 function normalizeAdminProject(raw: Record<string, unknown>): ProjectItem {
   const numericId = Number(raw.id);
   const gallery = resolveProjectGallery(String(raw.image ?? ""), raw.images);
+  const videoList = resolveProjectVideos(String(raw.video ?? ""), raw.videos);
   return {
     id: Number.isFinite(numericId) && numericId > 0 ? numericId : undefined,
     title: String(raw.title ?? ""),
@@ -67,7 +70,8 @@ function normalizeAdminProject(raw: Record<string, unknown>): ProjectItem {
     image: gallery[0] || String(raw.image ?? ""),
     images: gallery,
     imageFrame: parseImageFrame(raw.imageFrame),
-    video: String(raw.video ?? ""),
+    video: videoList[0] || "",
+    videos: videoList,
     featured: Boolean(raw.featured),
     completed: raw.completed !== false && raw.completed !== 0 && raw.completed !== "false",
     order: typeof raw.order === "number" ? raw.order : Number(raw.order) || 0,
@@ -626,7 +630,9 @@ export default function AdminDashboard() {
                         <p className="mt-0.5 text-xs text-[var(--text-faint)]">
                           {project.year} · {project.category}
                           {project.featured ? " · Featured" : ""}
-                          {project.video ? " · Video" : ""}
+                          {(project.videos?.length || project.video)
+                            ? ` · ${(project.videos?.length || (project.video ? 1 : 0))} video`
+                            : ""}
                           {(project.images?.length ?? 0) > 1
                             ? ` · ${project.images!.length} фото`
                             : ""}
@@ -936,14 +942,33 @@ export default function AdminDashboard() {
                     setEditingProject({ ...currentProject, imageFrame })
                   }
                 />
-                <VideoUploader
-                  label="Video (MP4 loop or Rutube / YouTube)"
+                <VideosEditor
                   folder="projects"
-                  value={currentProject.video ?? ""}
-                  onChange={(value) => setEditingProject({ ...currentProject, video: value })}
+                  videos={
+                    currentProject.videos?.length
+                      ? currentProject.videos
+                      : currentProject.video
+                        ? [currentProject.video]
+                        : []
+                  }
+                  onChange={(videos) => {
+                    const media = syncPrimaryFromVideos(videos);
+                    setEditingProject({
+                      ...currentProject,
+                      video: media.video,
+                      videos: media.videos,
+                    });
+                  }}
                 />
                 <VideoFrameCover
                   videoUrl={currentProject.video ?? ""}
+                  videoUrls={
+                    currentProject.videos?.length
+                      ? currentProject.videos
+                      : currentProject.video
+                        ? [currentProject.video]
+                        : []
+                  }
                   hasCover={Boolean(currentProject.image?.trim())}
                   folder="projects"
                   onCover={(imageUrl) => {

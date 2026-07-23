@@ -7,6 +7,11 @@ import {
   syncCoverFromGallery,
   resolveProjectGallery,
 } from "@/lib/project-images";
+import {
+  serializeProjectVideos,
+  syncPrimaryFromVideos,
+  resolveProjectVideos,
+} from "@/lib/project-videos";
 import { parseImageFrame, serializeImageFrame } from "@/lib/image-frame";
 import { ephemeralWriteError, isEphemeralDatabase } from "@/lib/db-mode";
 
@@ -70,6 +75,12 @@ export async function PUT(request: Request, context: RouteContext) {
       ? syncCoverFromGallery(resolveProjectGallery(body.image ?? "", body.images ?? []))
       : null;
 
+    const hasVideos =
+      typeof body.video === "string" || Array.isArray(body.videos);
+    const videoMedia = hasVideos
+      ? syncPrimaryFromVideos(resolveProjectVideos(body.video ?? "", body.videos ?? []))
+      : null;
+
     const hasFrame = body.imageFrame !== undefined;
     const frameJson = hasFrame ? serializeImageFrame(body.imageFrame) : undefined;
 
@@ -86,7 +97,12 @@ export async function PUT(request: Request, context: RouteContext) {
           }
         : {}),
       ...(frameJson ? { imageFrame: frameJson } : {}),
-      video: body.video,
+      ...(videoMedia
+        ? {
+            video: videoMedia.video,
+            videos: serializeProjectVideos(videoMedia.videos),
+          }
+        : {}),
       links: body.links !== undefined ? serializeProjectLinks(body.links) : undefined,
       featured: body.featured,
       completed: typeof body.completed === "boolean" ? body.completed : undefined,
@@ -106,11 +122,14 @@ export async function PUT(request: Request, context: RouteContext) {
     await upsertProjectSibling(project.id);
 
     const gallery = resolveProjectGallery(project.image, project.images);
+    const videoList = resolveProjectVideos(project.video, project.videos);
     return NextResponse.json({
       ...project,
       image: gallery[0] || project.image,
       images: gallery,
       imageFrame: parseImageFrame(project.imageFrame),
+      video: videoList[0] || "",
+      videos: videoList,
     });
   } catch (error) {
     const mapped = mapWriteError(error, "Не удалось обновить проект");

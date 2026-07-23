@@ -7,6 +7,7 @@ import { createClient } from "@libsql/client";
  */
 const UPGRADES = [
   `ALTER TABLE "Project" ADD COLUMN "video" TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE "Project" ADD COLUMN "videos" TEXT NOT NULL DEFAULT '[]'`,
   `ALTER TABLE "Project" ADD COLUMN "images" TEXT NOT NULL DEFAULT '[]'`,
   `ALTER TABLE "Project" ADD COLUMN "completed" BOOLEAN NOT NULL DEFAULT true`,
   `ALTER TABLE "Project" ADD COLUMN "imageFrame" TEXT NOT NULL DEFAULT '{"zoom":1,"x":50,"y":50}'`,
@@ -43,7 +44,7 @@ async function applyUpgrades(): Promise<void> {
       const message = error instanceof Error ? error.message : String(error);
       if (/duplicate column|already exists/i.test(message)) continue;
       // Older libsql phrasing for "column already there"
-      if (/(video|images|completed|imageFrame)/i.test(message) && /exists|duplicate/i.test(message)) {
+      if (/(video|videos|images|completed|imageFrame)/i.test(message) && /exists|duplicate/i.test(message)) {
         continue;
       }
       console.warn("[ensure-schema]", message);

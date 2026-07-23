@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { parseProjectLinks, type ProjectLink } from "@/lib/project-links";
 import { resolveProjectGallery } from "@/lib/project-images";
+import { resolveProjectVideos } from "@/lib/project-videos";
 import { parseImageFrame } from "@/lib/image-frame";
 import {
   resolveContactChannels,
@@ -21,7 +22,10 @@ export type ProjectItem = {
   images?: string[];
   /** Cover framing: zoom + focus point for cards/carousel. */
   imageFrame?: { zoom: number; x: number; y: number };
+  /** Primary / first video (file URL or Rutube/YouTube). */
   video?: string;
+  /** Full video list including primary; primary is also mirrored in `video`. */
+  videos?: string[];
   links?: ProjectLink[];
   featured?: boolean;
   /** Whether the work is finished. */
@@ -152,12 +156,14 @@ export async function getPortfolioContent(langInput: LangCode | "RU" | "EN"): Pr
       images,
       imageFrame,
       video,
+      videos,
       links,
       featured,
       completed,
       order,
     }) => {
       const gallery = resolveProjectGallery(image, images);
+      const videoList = resolveProjectVideos(video, videos);
       return {
         id,
         title,
@@ -168,7 +174,8 @@ export async function getPortfolioContent(langInput: LangCode | "RU" | "EN"): Pr
         image: gallery[0] || image,
         images: gallery,
         imageFrame: parseImageFrame(imageFrame),
-        video: video || "",
+        video: videoList[0] || "",
+        videos: videoList,
         links: parseProjectLinks(links),
         featured,
         completed: completed !== false,

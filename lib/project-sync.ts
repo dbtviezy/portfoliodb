@@ -16,6 +16,7 @@ type ProjectRow = {
   images: string;
   imageFrame: string;
   video: string;
+  videos: string;
   links: string;
   featured: boolean;
   completed: boolean;
@@ -60,6 +61,7 @@ export async function ensureProjectLanguageMirrors(): Promise<void> {
             images: source.images || "[]",
             imageFrame: source.imageFrame || '{"zoom":1,"x":50,"y":50}',
             video: source.video || "",
+            videos: source.videos || "[]",
             links: source.links || "[]",
             featured: source.featured,
             completed: source.completed !== false,
@@ -73,7 +75,8 @@ export async function ensureProjectLanguageMirrors(): Promise<void> {
       const needsMedia =
         (!sibling.image?.trim() && source.image?.trim()) ||
         (sibling.images === "[]" && source.images && source.images !== "[]") ||
-        (!sibling.video?.trim() && source.video?.trim());
+        (!sibling.video?.trim() && source.video?.trim()) ||
+        (sibling.videos === "[]" && source.videos && source.videos !== "[]");
 
       // Only fill missing media/status on existing siblings.
       // Title/category are synced on Studio save (upsertProjectSibling), not here —
@@ -87,6 +90,8 @@ export async function ensureProjectLanguageMirrors(): Promise<void> {
               source.images && source.images !== "[]" ? source.images : sibling.images,
             imageFrame: source.imageFrame || sibling.imageFrame,
             video: source.video?.trim() ? source.video : sibling.video,
+            videos:
+              source.videos && source.videos !== "[]" ? source.videos : sibling.videos,
             featured: source.featured,
             completed: source.completed !== false,
             year: source.year || sibling.year,
@@ -114,6 +119,7 @@ export async function upsertProjectSibling(sourceId: number): Promise<void> {
     images: source.images || "[]",
     imageFrame: source.imageFrame || '{"zoom":1,"x":50,"y":50}',
     video: source.video || "",
+    videos: source.videos || "[]",
     featured: source.featured,
     completed: source.completed !== false,
     year: source.year,

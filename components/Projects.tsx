@@ -221,7 +221,9 @@ const Projects = memo(function Projects({ lang }: ProjectsProps) {
                       ? " · в работе"
                       : " · in progress"
                     : ""}
-                  {active.video ? " · motion" : ""}
+                  {active.video || (active.videos && active.videos.length > 0)
+                    ? " · motion"
+                    : ""}
                 </p>
               </div>
             </motion.button>

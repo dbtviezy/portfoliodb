@@ -8,6 +8,11 @@ import {
   syncCoverFromGallery,
   resolveProjectGallery,
 } from "@/lib/project-images";
+import {
+  serializeProjectVideos,
+  syncPrimaryFromVideos,
+  resolveProjectVideos,
+} from "@/lib/project-videos";
 import { parseImageFrame, serializeImageFrame } from "@/lib/image-frame";
 import { ephemeralWriteError, isEphemeralDatabase } from "@/lib/db-mode";
 
@@ -22,6 +27,7 @@ type ProjectPayload = {
   images?: string[];
   imageFrame?: { zoom?: number; x?: number; y?: number };
   video?: string;
+  videos?: string[];
   links?: ProjectLink[];
   featured?: boolean;
   completed?: boolean;
@@ -66,6 +72,10 @@ function mediaFromPayload(body: ProjectPayload) {
   return syncCoverFromGallery(gallery);
 }
 
+function videosFromPayload(body: ProjectPayload) {
+  return syncPrimaryFromVideos(resolveProjectVideos(body.video ?? "", body.videos ?? []));
+}
+
 export async function GET(request: Request) {
   const session = await requireAdminSession();
   if (isUnauthorized(session)) return session;
@@ -84,11 +94,14 @@ export async function GET(request: Request) {
   return NextResponse.json(
     projects.map((project) => {
       const gallery = resolveProjectGallery(project.image, project.images);
+      const videoList = resolveProjectVideos(project.video, project.videos);
       return {
         ...project,
         image: gallery[0] || project.image,
         images: gallery,
         imageFrame: parseImageFrame(project.imageFrame),
+        video: videoList[0] || "",
+        videos: videoList,
       };
     })
   );
@@ -105,6 +118,7 @@ export async function POST(request: Request) {
     const body = (await request.json()) as ProjectPayload;
     const lang = toLangCode(body.lang ?? "en");
     const media = mediaFromPayload(body);
+    const videoMedia = videosFromPayload(body);
 
     if (!body.title || !body.category || !body.year || !body.description || !media.image) {
       return NextResponse.json(
@@ -128,7 +142,8 @@ export async function POST(request: Request) {
         image: media.image,
         images: serializeProjectImages(media.images),
         imageFrame: frameJson,
-        video: body.video ?? "",
+        video: videoMedia.video,
+        videos: serializeProjectVideos(videoMedia.videos),
         links: serializeProjectLinks(body.links),
         featured: body.featured ?? false,
         completed: body.completed !== false,
@@ -144,6 +159,8 @@ export async function POST(request: Request) {
         ...project,
         images: media.images,
         imageFrame: parseImageFrame(frameJson),
+        video: videoMedia.video,
+        videos: videoMedia.videos,
       },
       { status: 201 }
     );

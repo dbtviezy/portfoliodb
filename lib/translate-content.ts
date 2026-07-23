@@ -191,6 +191,7 @@ export async function translateProjectToOtherLang(projectId: number): Promise<{
     image: source.image,
     images: serializeProjectImages(gallery),
     video: source.video,
+    videos: source.videos || "[]",
     links: serializeProjectLinks(translatedLinks),
     featured: source.featured,
     completed: source.completed,
