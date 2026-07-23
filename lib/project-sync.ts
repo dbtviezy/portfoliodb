@@ -75,12 +75,13 @@ export async function ensureProjectLanguageMirrors(): Promise<void> {
         (sibling.images === "[]" && source.images && source.images !== "[]") ||
         (!sibling.video?.trim() && source.video?.trim());
 
-      if (needsMedia || sibling.completed !== source.completed || sibling.featured !== source.featured || sibling.title !== source.title || sibling.category !== source.category) {
+      // Only fill missing media/status on existing siblings.
+      // Title/category are synced on Studio save (upsertProjectSibling), not here —
+      // bidirectional title copy would fight EN↔RU edits.
+      if (needsMedia || sibling.completed !== source.completed || sibling.featured !== source.featured) {
         await prisma.project.update({
           where: { id: sibling.id },
           data: {
-            title: source.title,
-            category: source.category,
             image: source.image?.trim() ? source.image : sibling.image,
             images:
               source.images && source.images !== "[]" ? source.images : sibling.images,
