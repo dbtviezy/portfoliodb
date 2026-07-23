@@ -13,8 +13,7 @@ const ease = [0.22, 1, 0.36, 1] as const;
 
 const Hero = memo(function Hero({ lang }: HeroProps) {
   const { content } = useContent();
-  const firstName = lang === "RU" ? "Даниил" : "Daniil";
-  const lastName = lang === "RU" ? "Баутин" : "Bautin";
+  const name = lang === "RU" ? "Даниил Баутин" : "Daniil Bautin";
   const reduceMotion = useReducedMotion();
 
   const enter = (delay: number, y = 18) =>
@@ -63,10 +62,9 @@ const Hero = memo(function Hero({ lang }: HeroProps) {
 
             <motion.h1
               {...enter(0.18, 26)}
-              className="bg-gradient-to-br from-white via-[var(--text)] to-[var(--text-muted)] bg-clip-text text-[clamp(2.6rem,10vw,5.25rem)] font-semibold leading-[1.05] tracking-[-0.035em] text-transparent sm:text-[clamp(3.1rem,8.5vw,5.25rem)]"
+              className="whitespace-nowrap bg-gradient-to-br from-white via-[var(--text)] to-[var(--text-muted)] bg-clip-text text-[clamp(1.85rem,7.2vw,5.25rem)] font-semibold leading-none tracking-[-0.035em] text-transparent"
             >
-              <span className="block whitespace-nowrap">{firstName}</span>
-              <span className="block whitespace-nowrap">{lastName}</span>
+              {name}
             </motion.h1>
 
             <motion.p
