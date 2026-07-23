@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { parseExternalVideo } from "@/lib/external-video";
 
 type ProjectVideoProps = {
@@ -8,7 +9,7 @@ type ProjectVideoProps = {
   className?: string;
   /** Card hover loops vs modal hero */
   mode?: "card" | "modal";
-  style?: React.CSSProperties;
+  style?: CSSProperties;
 };
 
 /**
