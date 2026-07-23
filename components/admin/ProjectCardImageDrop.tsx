@@ -2,6 +2,8 @@
 
 import { useCallback, useRef, useState } from "react";
 
+import { compressImageFile } from "@/lib/compress-image";
+
 type ProjectCardImageDropProps = {
   image: string;
   title: string;
@@ -26,9 +28,11 @@ export function ProjectCardImageDrop({
       setUploading(true);
       setError("");
       try {
+        const prepared = await compressImageFile(file);
         const body = new FormData();
-        body.set("file", file);
+        body.set("file", prepared);
         body.set("folder", "projects");
+        body.set("kind", "image");
 
         const response = await fetch("/api/admin/upload", {
           method: "POST",

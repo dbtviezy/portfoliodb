@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { isUnauthorized, requireAdminSession } from "@/lib/api-auth";
-import { MAX_UPLOAD_BYTES, storeImage } from "@/lib/storage";
+import {
+  isAllowedImageType,
+  isAllowedVideoType,
+  MAX_UPLOAD_BYTES,
+  storeImage,
+  storeVideo,
+} from "@/lib/storage";
 
 export const runtime = "nodejs";
 
@@ -12,17 +18,22 @@ export async function POST(request: Request) {
     const form = await request.formData();
     const file = form.get("file");
     const folder = String(form.get("folder") ?? "portfolio");
+    const kind = String(form.get("kind") ?? "image");
 
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "Нужен файл (field: file)" }, { status: 400 });
     }
 
-    const stored = await storeImage(file, folder);
+    const stored =
+      kind === "video" || isAllowedVideoType(file.type)
+        ? await storeVideo(file, folder || "projects")
+        : await storeImage(file, folder);
+
     return NextResponse.json(stored, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Upload failed";
     const status =
-      /4\.5 MB|Только изображения|Пустой файл|Blob Store/i.test(message) ? 400 : 500;
+      /4\.5 MB|Только |Пустой файл|Blob Store/i.test(message) ? 400 : 500;
     console.error("Upload error:", error);
     return NextResponse.json({ error: message }, { status });
   }
@@ -36,5 +47,7 @@ export async function GET() {
     maxBytes: MAX_UPLOAD_BYTES,
     blobConfigured: Boolean(process.env.BLOB_READ_WRITE_TOKEN?.trim()),
     vercel: Boolean(process.env.VERCEL),
+    acceptImages: ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"],
+    acceptVideos: ["video/mp4", "video/webm"],
   });
 }

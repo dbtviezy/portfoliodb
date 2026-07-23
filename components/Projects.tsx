@@ -187,20 +187,33 @@ const Projects = memo(function Projects({ lang }: ProjectsProps) {
                 transition: { duration: 0.32, ease },
               }}
               transition={{ duration: 0.45, ease }}
-              className="absolute left-[14%] top-0 z-10 h-full w-[72%] cursor-pointer overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg-elevated)] text-left shadow-[var(--shadow-panel)] outline-none [transform-style:preserve-3d] hover:border-[var(--border-strong)] focus-visible:ring-1 focus-visible:ring-white/30 sm:left-[21%] sm:w-[58%] md:left-[24%] md:w-[52%]"
+              className="group absolute left-[14%] top-0 z-10 h-full w-[72%] cursor-pointer overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg-elevated)] text-left shadow-[var(--shadow-panel)] outline-none [transform-style:preserve-3d] hover:border-[var(--border-strong)] focus-visible:ring-1 focus-visible:ring-white/30 sm:left-[21%] sm:w-[58%] md:left-[24%] md:w-[52%]"
             >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={active.image}
                 alt={active.title}
                 className="h-full w-full object-cover"
                 draggable={false}
               />
+              {active.video ? (
+                <video
+                  className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-100"
+                  src={active.video}
+                  poster={active.image}
+                  muted
+                  loop
+                  playsInline
+                  autoPlay
+                />
+              ) : null}
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent px-3.5 pb-3.5 pt-12 sm:p-4 sm:pt-16 md:p-5">
                 <h3 className="truncate text-[15px] font-semibold tracking-tight text-white sm:text-lg md:text-xl">
                   {active.title}
                 </h3>
                 <p className="mt-0.5 truncate text-[10px] text-white/65 sm:text-xs">
                   {active.category} · {active.year}
+                  {active.video ? " · motion" : ""}
                 </p>
               </div>
             </motion.button>

@@ -13,6 +13,7 @@ type ProjectPayload = {
   description?: string;
   detail?: string;
   image?: string;
+  video?: string;
   links?: ProjectLink[];
   featured?: boolean;
   order?: number;
@@ -92,17 +93,21 @@ export async function POST(request: Request) {
         description: body.description,
         detail: body.detail ?? "",
         image: body.image,
+        video: body.video ?? "",
         links: serializeProjectLinks(body.links),
         featured: body.featured ?? false,
         order: body.order ?? count,
       },
     });
 
-    if (body.image?.trim()) {
+    if (body.image?.trim() || body.video?.trim()) {
       const otherLang = lang === "en" ? "ru" : "en";
       await prisma.project.updateMany({
         where: { lang: otherLang, order: project.order },
-        data: { image: body.image },
+        data: {
+          ...(body.image?.trim() ? { image: body.image } : {}),
+          ...(body.video?.trim() ? { video: body.video } : {}),
+        },
       });
     }
 

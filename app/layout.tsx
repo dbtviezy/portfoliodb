@@ -12,10 +12,35 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
+  "https://portfoliodb-three.vercel.app";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "Portfolio db.tviezy",
   description:
     "Portfolio of Daniil Bautin (db.tviezy) — motion design, interfaces, and visual systems.",
+  applicationName: "Portfolio db.tviezy",
+  icons: {
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/favicon.svg" }],
+  },
+  openGraph: {
+    title: "Portfolio db.tviezy",
+    description:
+      "Motion design, interfaces, and visual systems by Daniil Bautin.",
+    url: siteUrl,
+    siteName: "Portfolio db.tviezy",
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Portfolio db.tviezy",
+    description:
+      "Motion design, interfaces, and visual systems by Daniil Bautin.",
+  },
 };
 
 export default function RootLayout({

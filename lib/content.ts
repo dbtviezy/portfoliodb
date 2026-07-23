@@ -15,6 +15,7 @@ export type ProjectItem = {
   description: string;
   detail?: string;
   image: string;
+  video?: string;
   links?: ProjectLink[];
   featured?: boolean;
   order?: number;
@@ -115,7 +116,7 @@ export async function getPortfolioContent(langInput: LangCode | "RU" | "EN"): Pr
     }
   }
 
-  const allItems = projects.map(({ id, title, category, year, description, detail, image, links, featured, order }) => ({
+  const allItems = projects.map(({ id, title, category, year, description, detail, image, video, links, featured, order }) => ({
     id,
     title,
     category,
@@ -123,6 +124,7 @@ export async function getPortfolioContent(langInput: LangCode | "RU" | "EN"): Pr
     description,
     detail: detail || "",
     image,
+    video: video || "",
     links: parseProjectLinks(links),
     featured,
     order,

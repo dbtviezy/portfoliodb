@@ -9,6 +9,8 @@ import enFallback from "@/locales/en.json";
 
 export type Lang = "RU" | "EN";
 
+const LANG_STORAGE_KEY = "dbtviezy-lang";
+
 type ContentContextValue = {
   lang: Lang;
   setLang: (lang: Lang) => void;
@@ -20,12 +22,24 @@ type ContentContextValue = {
 
 const ContentContext = createContext<ContentContextValue | null>(null);
 
+function readStoredLang(fallback: Lang): Lang {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = window.localStorage.getItem(LANG_STORAGE_KEY);
+    if (raw === "RU" || raw === "EN") return raw;
+  } catch {
+    // ignore
+  }
+  return fallback;
+}
+
 function fallbackContent(lang: Lang): PortfolioContent {
   const source = lang === "RU" ? ruFallback : enFallback;
   const mapProjects = (items: typeof source.projects.allItems) =>
     items.map((item) => ({
       ...item,
       detail: "",
+      video: "",
       links: [] as { label: string; url: string }[],
     }));
 
@@ -39,7 +53,6 @@ function fallbackContent(lang: Lang): PortfolioContent {
     hero: source.hero,
     about: {
       ...source.about,
-      // Never paint stock Unsplash while waiting / as last resort empty.
       profileImage: isUsableProfileImage(source.about.profileImage)
         ? source.about.profileImage
         : "",
@@ -69,12 +82,31 @@ export function ContentProvider({
   children: React.ReactNode;
   initialLang?: Lang;
 }) {
-  const [lang, setLang] = useState<Lang>(initialLang);
+  const [lang, setLangState] = useState<Lang>(initialLang);
   const [content, setContent] = useState<PortfolioContent | null>(null);
   const [loading, setLoading] = useState(true);
   const [ready, setReady] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    setLangState(readStoredLang(initialLang));
+    setHydrated(true);
+  }, [initialLang]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      window.localStorage.setItem(LANG_STORAGE_KEY, lang);
+    } catch {
+      // ignore
+    }
+    document.documentElement.lang = lang === "RU" ? "ru" : "en";
+  }, [lang, hydrated]);
+
+  const setLang = (next: Lang) => setLangState(next);
+
+  useEffect(() => {
+    if (!hydrated) return;
     let cancelled = false;
 
     async function loadContent() {
@@ -88,7 +120,6 @@ export function ContentProvider({
         if (cancelled) return;
 
         setContent((previous) => {
-          // Keep a real portrait if the other language still has stock/empty.
           if (
             previous &&
             isUsableProfileImage(previous.about.profileImage) &&
@@ -115,7 +146,7 @@ export function ContentProvider({
     return () => {
       cancelled = true;
     };
-  }, [lang]);
+  }, [lang, hydrated]);
 
   const value = useMemo(
     () => ({
@@ -123,9 +154,9 @@ export function ContentProvider({
       setLang,
       content: content ?? fallbackContent(lang),
       loading,
-      ready,
+      ready: ready && hydrated,
     }),
-    [lang, content, loading, ready]
+    [lang, content, loading, ready, hydrated]
   );
 
   return <ContentContext.Provider value={value}>{children}</ContentContext.Provider>;

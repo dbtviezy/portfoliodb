@@ -65,6 +65,7 @@ export async function PUT(request: Request, context: RouteContext) {
       description: body.description,
       detail: body.detail ?? "",
       image: body.image,
+      video: body.video,
       links: serializeProjectLinks(body.links),
       featured: body.featured,
       order: body.order,
@@ -80,11 +81,14 @@ export async function PUT(request: Request, context: RouteContext) {
     });
 
     // Keep matching-order project on the other language in sync for media fields.
-    if (typeof body.image === "string" && body.image.trim()) {
+    const mediaPatch: { image?: string; video?: string } = {};
+    if (typeof body.image === "string") mediaPatch.image = body.image;
+    if (typeof body.video === "string") mediaPatch.video = body.video;
+    if (Object.keys(mediaPatch).length > 0) {
       const otherLang = project.lang === "en" ? "ru" : "en";
       await prisma.project.updateMany({
         where: { lang: otherLang, order: project.order },
-        data: { image: body.image },
+        data: mediaPatch,
       });
     }
 

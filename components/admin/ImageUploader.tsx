@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { StudioInput, StudioLabel } from "@/components/admin/studio-ui";
+import { compressImageFile } from "@/lib/compress-image";
 
 type ImageUploaderProps = {
   label: string;
@@ -26,9 +27,11 @@ export function ImageUploader({
       setUploading(true);
       setError("");
       try {
+        const prepared = await compressImageFile(file);
         const body = new FormData();
-        body.set("file", file);
+        body.set("file", prepared);
         body.set("folder", folder);
+        body.set("kind", "image");
 
         const response = await fetch("/api/admin/upload", {
           method: "POST",
@@ -114,7 +117,7 @@ export function ImageUploader({
             {uploading ? "Загрузка…" : "Перетащи фото сюда"}
           </p>
           <p className="text-xs text-[var(--text-faint)]">
-            или кликни · JPEG / PNG / WebP · до 4.5 MB
+            или кликни · JPEG / PNG / WebP · авто-сжатие
           </p>
         </div>
 

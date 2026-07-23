@@ -30,7 +30,9 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
   }, [project, onClose]);
 
   const links = project?.links?.filter((link) => link.label && link.url) ?? [];
-  const body = project?.detail?.trim() || project?.description || "";
+  const summary = project?.description?.trim() || "";
+  const caseText = project?.detail?.trim() || "";
+  const video = project?.video?.trim() || "";
 
   return (
     <AnimatePresence>
@@ -60,11 +62,24 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
             className="relative z-10 flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-[1.25rem] border border-[var(--border)] bg-[var(--bg-panel)] shadow-[var(--shadow-panel)] sm:rounded-[var(--radius-xl)]"
           >
             <div className="relative aspect-[16/10] shrink-0 overflow-hidden bg-[var(--bg-soft)] sm:aspect-[16/9]">
-              <img
-                src={project.image}
-                alt={project.title}
-                className="h-full w-full object-cover"
-              />
+              {video ? (
+                <video
+                  className="h-full w-full object-cover"
+                  src={video}
+                  poster={project.image}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={project.image}
+                  alt={project.title}
+                  className="h-full w-full object-cover"
+                />
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-panel)] via-transparent to-transparent" />
               <button
                 type="button"
@@ -90,9 +105,24 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
                 </div>
               </div>
 
-              <p className="mb-6 whitespace-pre-wrap text-sm leading-relaxed text-[var(--text-muted)] md:text-[15px]">
-                {body}
-              </p>
+              {summary ? (
+                <p className="mb-4 text-sm leading-relaxed text-[var(--text-muted)] md:text-[15px]">
+                  {summary}
+                </p>
+              ) : null}
+
+              {caseText && caseText !== summary ? (
+                <div className="mb-6">
+                  <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--text-faint)]">
+                    {lang === "RU" ? "Кейс" : "Case"}
+                  </p>
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--text-muted)] md:text-[15px]">
+                    {caseText}
+                  </p>
+                </div>
+              ) : (
+                <div className="mb-6" />
+              )}
 
               {links.length > 0 ? (
                 <div>

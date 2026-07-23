@@ -20,6 +20,7 @@ import {
   StudioPanel,
 } from "@/components/admin/studio-ui";
 import { ImageUploader } from "@/components/admin/ImageUploader";
+import { VideoUploader } from "@/components/admin/VideoUploader";
 import { ProjectCardImageDrop } from "@/components/admin/ProjectCardImageDrop";
 
 type AdminLang = "en" | "ru";
@@ -40,6 +41,7 @@ const emptyProject: ProjectItem = {
   description: "",
   detail: "",
   image: "",
+  video: "",
   links: [],
   featured: false,
 };
@@ -54,6 +56,7 @@ function normalizeAdminProject(raw: Record<string, unknown>): ProjectItem {
     description: String(raw.description ?? ""),
     detail: String(raw.detail ?? ""),
     image: String(raw.image ?? ""),
+    video: String(raw.video ?? ""),
     featured: Boolean(raw.featured),
     order: typeof raw.order === "number" ? raw.order : Number(raw.order) || 0,
     links: Array.isArray(raw.links)
@@ -294,6 +297,42 @@ export default function AdminDashboard() {
     }
   }
 
+  async function persistProjectOrder(next: ProjectItem[]) {
+    setProjects(next);
+    const orderedIds = next.map((p) => p.id).filter((id): id is number => typeof id === "number");
+    if (orderedIds.length === 0) return;
+    setSaving(true);
+    try {
+      const response = await fetch("/api/admin/projects/reorder", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lang, orderedIds }),
+      });
+      if (!response.ok) {
+        const data = (await response.json().catch(() => ({}))) as { error?: string };
+        setMessage(data.error ?? "Не удалось сохранить порядок");
+        await loadData();
+        return;
+      }
+      const rows = await response.json();
+      setProjects((rows as Record<string, unknown>[]).map(normalizeAdminProject));
+      setMessage("Порядок обновлён");
+    } catch {
+      setMessage("Не удалось сохранить порядок");
+      await loadData();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function moveProject(fromIndex: number, toIndex: number) {
+    if (toIndex < 0 || toIndex >= projects.length || fromIndex === toIndex) return;
+    const next = [...projects];
+    const [item] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, item);
+    void persistProjectOrder(next.map((p, order) => ({ ...p, order })));
+  }
+
   async function deleteProject(id: number) {
     if (!confirm("Удалить этот проект?")) return;
     setSaving(true);
@@ -452,9 +491,9 @@ export default function AdminDashboard() {
 
               <div className="space-y-2">
                 <p className="text-xs text-[var(--text-faint)]">
-                  Перетащи фото прямо на превью карточки — сохранится сразу. Или открой Edit для полного редактора.
+                  Перетащи фото на превью. Порядок: кнопки ↑ ↓. В Edit можно добавить видео-loop.
                 </p>
-                {projects.map((project) => (
+                {projects.map((project, index) => (
                   <div
                     key={project.id}
                     className="flex flex-col justify-between gap-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg)] p-4 md:flex-row md:items-center"
@@ -471,10 +510,29 @@ export default function AdminDashboard() {
                         <p className="mt-0.5 text-xs text-[var(--text-faint)]">
                           {project.year} · {project.category}
                           {project.featured ? " · Featured" : ""}
+                          {project.video ? " · Video" : ""}
                         </p>
                       </div>
                     </div>
-                    <div className="flex shrink-0 gap-2">
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      <StudioButton
+                        type="button"
+                        variant="ghost"
+                        disabled={saving || index === 0}
+                        onClick={() => moveProject(index, index - 1)}
+                        aria-label="Move up"
+                      >
+                        ↑
+                      </StudioButton>
+                      <StudioButton
+                        type="button"
+                        variant="ghost"
+                        disabled={saving || index === projects.length - 1}
+                        onClick={() => moveProject(index, index + 1)}
+                        aria-label="Move down"
+                      >
+                        ↓
+                      </StudioButton>
                       <StudioButton
                         type="button"
                         variant="ghost"
@@ -736,9 +794,15 @@ export default function AdminDashboard() {
                   value={currentProject.image}
                   onChange={(value) => setEditingProject({ ...currentProject, image: value })}
                 />
+                <VideoUploader
+                  label="Video loop (optional)"
+                  folder="projects"
+                  value={currentProject.video ?? ""}
+                  onChange={(value) => setEditingProject({ ...currentProject, video: value })}
+                />
                 <StudioField label="Short description" value={currentProject.description} onChange={(value) => setEditingProject({ ...currentProject, description: value })} multiline />
                 <StudioField
-                  label="Full details"
+                  label="Case / detail (modal)"
                   value={currentProject.detail ?? ""}
                   onChange={(value) => setEditingProject({ ...currentProject, detail: value })}
                   multiline

@@ -60,6 +60,27 @@ async function main() {
       throw error;
     }
   }
+
+  // Safe upgrades for existing databases created from older schemas.
+  const upgrades = [
+    `ALTER TABLE "Project" ADD COLUMN "video" TEXT NOT NULL DEFAULT ''`,
+  ];
+  for (const statement of upgrades) {
+    try {
+      await client.execute(statement);
+      console.log(`upgrade ok: ${statement}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (/duplicate column|already exists/i.test(message)) {
+        console.log(`upgrade skip: ${message}`);
+        continue;
+      }
+      // Some SQLite builds phrase errors differently — keep going if column exists.
+      if (/video/i.test(message) && /exists/i.test(message)) continue;
+      console.log(`upgrade note: ${message}`);
+    }
+  }
+
   console.log("Schema applied.");
 
   const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();

@@ -78,6 +78,7 @@ CREATE TABLE "Project" (
     "description" TEXT NOT NULL,
     "detail" TEXT NOT NULL DEFAULT '',
     "image" TEXT NOT NULL,
+    "video" TEXT NOT NULL DEFAULT '',
     "links" TEXT NOT NULL DEFAULT '[]',
     "featured" BOOLEAN NOT NULL DEFAULT false,
     "order" INTEGER NOT NULL DEFAULT 0,
