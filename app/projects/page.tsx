@@ -50,7 +50,7 @@ const ProjectCard = memo(function ProjectCard({
       </div>
 
       <div className="mb-1 flex items-start justify-between gap-3 sm:mb-1.5">
-        <h3 className="text-lg font-semibold tracking-tight text-[var(--text)] transition group-hover:text-[var(--text)] sm:text-xl">
+        <h3 className="min-w-0 flex-1 break-words text-lg font-semibold tracking-tight text-[var(--text)] transition group-hover:text-[var(--text)] sm:text-xl">
           {project.title}
         </h3>
         <span className="shrink-0 font-mono text-xs text-[var(--text-faint)] sm:text-sm">{project.year}</span>

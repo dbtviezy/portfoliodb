@@ -14,7 +14,6 @@ import {
 } from "@/lib/external-video";
 import PhotoLightbox from "@/components/PhotoLightbox";
 import VideoTheater from "@/components/VideoTheater";
-import FramedImage from "@/components/FramedImage";
 import { ProjectVideo } from "@/components/ProjectVideo";
 
 type ProjectModalProps = {
@@ -130,17 +129,17 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
               ) : activeImage ? (
                 <button
                   type="button"
-                  className="group relative h-full w-full cursor-zoom-in overflow-hidden"
+                  className="group relative h-full w-full cursor-zoom-in overflow-hidden bg-black/25"
                   onClick={() => setLightboxOpen(true)}
                   aria-label={lang === "RU" ? "Открыть фото" : "Open photo"}
                 >
-                  <div className="h-full w-full transition duration-700 ease-out group-hover:scale-[1.04]">
-                    <FramedImage
-                      src={activeImage}
-                      alt={project.title}
-                      frame={activeIndex === 0 ? project.imageFrame : undefined}
-                    />
-                  </div>
+                  {/* Full still in the modal — card framing (zoom/crop) is only for list/carousel. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={activeImage}
+                    alt={project.title}
+                    className="h-full w-full object-contain"
+                  />
                   <span className="pointer-events-none absolute bottom-3 left-3 rounded-full border border-white/20 bg-black/45 px-2.5 py-1 text-[10px] text-white/85 opacity-0 backdrop-blur transition group-hover:opacity-100 sm:bottom-4 sm:left-4">
                     {lang === "RU" ? "Увеличить" : "Enlarge"}
                   </span>
@@ -228,7 +227,7 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
 
             <div className="overflow-y-auto overscroll-contain px-5 py-5 sm:px-6 sm:py-6 md:px-8 md:py-7">
               <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="mb-2 text-xs text-[var(--text-faint)]">
                     {project.category} · {project.year}
                     {gallery.length > 1 ? ` · ${gallery.length} photos` : ""}
@@ -238,7 +237,7 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
                   </p>
                   <h2
                     id="project-modal-title"
-                    className="text-xl font-semibold tracking-tight text-[var(--text)] sm:text-2xl md:text-3xl"
+                    className="break-words text-xl font-semibold tracking-tight text-[var(--text)] sm:text-2xl md:text-3xl"
                   >
                     {project.title}
                   </h2>

@@ -32,7 +32,8 @@ export function ImageFrameEditor({ image, value, onChange }: ImageFrameEditorPro
       <div>
         <StudioLabel>Кадр на сайте (лицевая)</StudioLabel>
         <p className="mt-1 text-xs text-[var(--text-faint)]">
-          Подними / опусти / приблизь — так фото будет выглядеть в карусели и на карточках.
+          Кадр влияет на карточки и карусель (обрезка). В открытом проекте фото
+          показывается целиком — без этого зума.
         </p>
       </div>
 
