@@ -153,11 +153,30 @@ body > div:first-child {
   }
 }
 
+@keyframes siteLoaderBar {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(220%);
+  }
+}
+
+.site-loader-bar {
+  animation: siteLoaderBar 1.15s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-\[heroGlow_16s_ease-in-out_infinite\],
   .animate-\[heroGlowAlt_20s_ease-in-out_infinite\],
   .animate-\[heroBounce_1\.6s_ease-in-out_infinite\] {
     animation: none !important;
+  }
+
+  .site-loader-bar {
+    animation: none;
+    width: 100%;
+    opacity: 0.45;
   }
 }
 

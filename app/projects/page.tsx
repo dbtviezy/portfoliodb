@@ -10,6 +10,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ProjectModal from "@/components/ProjectModal";
 import BioModal from "@/components/BioModal";
 import { ContentProvider, useContent } from "@/components/ContentProvider";
+import ContentGate from "@/components/ContentGate";
 import type { ProjectItem } from "@/lib/content";
 
 export type Lang = "RU" | "EN";
@@ -166,7 +167,9 @@ function ProjectsPageInner() {
 export default function ProjectsPage() {
   return (
     <ContentProvider initialLang="EN">
-      <ProjectsPageInner />
+      <ContentGate>
+        <ProjectsPageInner />
+      </ContentGate>
     </ContentProvider>
   );
 }

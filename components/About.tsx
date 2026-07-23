@@ -27,15 +27,21 @@ const About = memo(function About({ lang }: AboutProps) {
         <div className="grid grid-cols-1 items-start gap-7 sm:gap-9 md:grid-cols-[0.85fr_1.15fr] md:gap-12 lg:gap-16">
           <div className="mx-auto w-full max-w-[280px] sm:max-w-sm md:mx-0 md:max-w-none">
             <div className="relative aspect-[4/5] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg-elevated)]">
-              <img
-                src={
-                  about.profileImage ||
-                  "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80"
-                }
-                alt={lang === "RU" ? "Портрет" : "Portrait"}
-                className="h-full w-full object-cover"
-                loading="lazy"
-              />
+              {about.profileImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={about.profileImage}
+                  alt={lang === "RU" ? "Портрет" : "Portrait"}
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(ellipse_at_30%_20%,rgba(255,255,255,0.06),transparent_55%)]">
+                  <span className="font-mono text-[10px] tracking-[0.2em] text-[var(--text-faint)]">
+                    $ db.tviezy
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="mt-4 grid grid-cols-3 gap-2 sm:mt-6 sm:gap-3">

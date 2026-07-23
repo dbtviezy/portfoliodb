@@ -382,7 +382,7 @@ export default function AdminDashboard() {
                 }
               />
               <ImageUploader
-                label="Portrait photo"
+                label="Portrait photo (одна на EN и RU)"
                 folder="portrait"
                 value={content.about.profileImage}
                 onChange={(value) =>

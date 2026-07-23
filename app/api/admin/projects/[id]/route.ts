@@ -79,6 +79,15 @@ export async function PUT(request: Request, context: RouteContext) {
       data: cleaned,
     });
 
+    // Keep matching-order project on the other language in sync for media fields.
+    if (typeof body.image === "string" && body.image.trim()) {
+      const otherLang = project.lang === "en" ? "ru" : "en";
+      await prisma.project.updateMany({
+        where: { lang: otherLang, order: project.order },
+        data: { image: body.image },
+      });
+    }
+
     return NextResponse.json(project);
   } catch (error) {
     const mapped = mapWriteError(error, "Не удалось обновить проект");

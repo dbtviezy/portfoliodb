@@ -95,6 +95,26 @@ export async function getPortfolioContent(langInput: LangCode | "RU" | "EN"): Pr
     throw new Error(`Portfolio content for "${lang}" was not found`);
   }
 
+  const { isUsableProfileImage } = await import("@/lib/media");
+  let profileImage = portfolio.profileImage ?? "";
+  if (!isUsableProfileImage(profileImage)) {
+    const otherLang = lang === "en" ? "ru" : "en";
+    const other = await prisma.portfolio.findFirst({
+      where: { lang: otherLang },
+      select: { profileImage: true },
+    });
+    if (isUsableProfileImage(other?.profileImage)) {
+      profileImage = other!.profileImage;
+      // Heal stock/empty row so the next language switch stays consistent.
+      await prisma.portfolio.update({
+        where: { id: portfolio.id },
+        data: { profileImage },
+      });
+    } else {
+      profileImage = "";
+    }
+  }
+
   const allItems = projects.map(({ id, title, category, year, description, detail, image, links, featured, order }) => ({
     id,
     title,
@@ -124,7 +144,7 @@ export async function getPortfolioContent(langInput: LangCode | "RU" | "EN"): Pr
     },
     about: {
       title: portfolio.aboutTitle,
-      profileImage: portfolio.profileImage,
+      profileImage,
       desc1: portfolio.aboutDesc1,
       desc2: portfolio.aboutDesc2,
       expertise: portfolio.aboutExpertise,

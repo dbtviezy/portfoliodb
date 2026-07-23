@@ -1,6 +1,7 @@
 "use client";
 
 import { ContentProvider, useContent } from "@/components/ContentProvider";
+import ContentGate from "@/components/ContentGate";
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import Projects from "@/components/Projects";
@@ -30,7 +31,9 @@ function HomeContent() {
 export default function Home() {
   return (
     <ContentProvider initialLang="EN">
-      <HomeContent />
+      <ContentGate>
+        <HomeContent />
+      </ContentGate>
     </ContentProvider>
   );
 }

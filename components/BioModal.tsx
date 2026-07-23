@@ -15,9 +15,7 @@ export default function BioModal({ lang }: BioModalProps) {
   const [open, setOpen] = useState(false);
 
   const name = lang === "RU" ? "Даниил Баутин" : "Daniil Bautin";
-  const portrait =
-    content.about.profileImage ||
-    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80";
+  const portrait = content.about.profileImage.trim();
   const role = content.hero.text1 || "Motion · interface · visual systems";
   const bio1 = content.about.desc1;
   const bio2 = content.about.desc2;
@@ -91,13 +89,22 @@ export default function BioModal({ lang }: BioModalProps) {
                 <div className="flex min-h-full flex-col gap-8 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-[max(3.25rem,calc(env(safe-area-inset-top)+2.5rem))] sm:gap-10 sm:pb-12 sm:pt-10 md:min-h-[min(88vh,560px)] md:flex-row md:gap-14 md:p-0">
                   {/* Desktop: flush left, top, bottom — gap only before text */}
                   <div className="mx-auto w-[70%] max-w-[280px] shrink-0 px-5 sm:px-8 md:mx-0 md:w-[min(40%,300px)] md:max-w-[300px] md:self-stretch md:px-0">
-                    <div className="relative aspect-[3/4] w-full overflow-hidden md:h-full md:aspect-auto">
-                      <img
-                        src={portrait}
-                        alt={name}
-                        className="h-full w-full object-cover object-center"
-                        draggable={false}
-                      />
+                    <div className="relative aspect-[3/4] w-full overflow-hidden bg-[var(--bg-elevated)] md:h-full md:aspect-auto">
+                      {portrait ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={portrait}
+                          alt={name}
+                          className="h-full w-full object-cover object-center"
+                          draggable={false}
+                        />
+                      ) : (
+                        <div className="flex h-full min-h-[220px] w-full items-center justify-center bg-[radial-gradient(ellipse_at_30%_20%,rgba(255,255,255,0.08),transparent_55%)]">
+                          <span className="font-mono text-[10px] tracking-[0.2em] text-[var(--text-faint)]">
+                            $ db.tviezy
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
 

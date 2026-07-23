@@ -198,6 +198,15 @@ export async function PUT(request: Request) {
       });
     }
 
+    // Portrait is shared across EN/RU — keep both rows in sync.
+    if (typeof body.profileImage === "string") {
+      const otherLang = lang === "en" ? "ru" : "en";
+      await prisma.portfolio.updateMany({
+        where: { lang: otherLang },
+        data: { profileImage: body.profileImage },
+      });
+    }
+
     if (body.skills) {
       await syncListItems(lang, "skill", body.skills);
     }

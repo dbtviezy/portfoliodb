@@ -15,7 +15,7 @@ async function seedLanguage(lang: "en" | "ru", data: LocaleData) {
     aboutDesc1: data.about.desc1,
     aboutDesc2: data.about.desc2,
     aboutExpertise: data.about.expertise,
-    profileImage: data.about.profileImage,
+    profileImage: data.about.profileImage || "",
     aboutStats1Value: data.about.stats[0].value,
     aboutStats1Label: data.about.stats[0].label,
     aboutStats2Value: data.about.stats[1].value,
