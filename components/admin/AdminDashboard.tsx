@@ -608,8 +608,7 @@ export default function AdminDashboard() {
 
               <div className="space-y-2">
                 <p className="text-xs text-[var(--text-faint)]">
-                  На карточке — только лицевая. Галерея листается в открытом проекте. В Edit выбери
-                  обложку и статус.
+                  На карточке — только лицевая. В Edit: галерея, кадр (масштаб/сдвиг) и статус.
                 </p>
                 {projects.map((project, index) => (
                   <div
