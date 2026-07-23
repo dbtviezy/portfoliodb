@@ -2,6 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { StudioLabel } from "@/components/admin/studio-ui";
+import {
+  isDirectVideoFileUrl,
+  parseExternalVideo,
+  providerLabel,
+  type ExternalVideo,
+} from "@/lib/external-video";
 
 type VideoFrameCoverProps = {
   videoUrl: string;
@@ -17,9 +23,102 @@ function formatTime(seconds: number) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+function ExternalCoverPanel({
+  external,
+  hasCover,
+  folder,
+  onCover,
+}: {
+  external: ExternalVideo;
+  hasCover: boolean;
+  folder: string;
+  onCover: (imageUrl: string) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [preview, setPreview] = useState(external.thumbnailCandidates[0] ?? "");
+  const label = providerLabel(external.provider);
+
+  useEffect(() => {
+    setPreview(external.thumbnailCandidates[0] ?? "");
+    setError("");
+  }, [external]);
+
+  const applyThumbnail = useCallback(async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch("/api/admin/video-cover", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoUrl: external.sourceUrl, folder }),
+      });
+      const data = (await response.json().catch(() => ({}))) as {
+        url?: string;
+        error?: string;
+      };
+      if (!response.ok || !data.url) {
+        throw new Error(data.error ?? "Не удалось взять превью");
+      }
+      onCover(data.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось взять превью");
+    } finally {
+      setBusy(false);
+    }
+  }, [external.sourceUrl, folder, onCover]);
+
+  return (
+    <div
+      className={`space-y-3 rounded-[var(--radius-md)] border p-3 sm:p-4 ${
+        hasCover
+          ? "border-[var(--border)] bg-[var(--bg-soft)]"
+          : "border-[var(--accent)]/40 bg-[var(--accent)]/5"
+      }`}
+    >
+      <div>
+        <StudioLabel>Обложка из {label}</StudioLabel>
+        <p className="mt-1 text-xs text-[var(--text-faint)]">
+          Ссылку {label} нельзя прокрутить как файл — берём официальное превью
+          видео и ставим его на обложку.
+        </p>
+      </div>
+
+      <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--border)] bg-black/40">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={preview}
+          alt=""
+          className="aspect-video w-full object-cover"
+          onError={() => {
+            const next = external.thumbnailCandidates.find((url) => url !== preview);
+            if (next) setPreview(next);
+          }}
+        />
+      </div>
+
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => void applyThumbnail()}
+        className="rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--bg-elevated)] px-3 py-2 text-sm text-[var(--text)] transition hover:border-[var(--accent)] disabled:opacity-50"
+      >
+        {busy
+          ? "Загрузка превью…"
+          : hasCover
+            ? `Заменить обложку превью ${label}`
+            : `Поставить превью ${label} на обложку`}
+      </button>
+
+      {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
+    </div>
+  );
+}
+
 /**
  * Grab a still from the project video and upload it as the cover photo
  * when no gallery images are set (or to replace the cover).
+ * For Rutube/YouTube/Vimeo links, downloads the platform thumbnail instead.
  */
 export function VideoFrameCover({
   videoUrl,
@@ -33,12 +132,17 @@ export function VideoFrameCover({
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
+
+  const external = parseExternalVideo(videoUrl);
+  const isFile = isDirectVideoFileUrl(videoUrl);
 
   useEffect(() => {
     setReady(false);
     setDuration(0);
     setCurrent(0);
     setError("");
+    setLoadError("");
   }, [videoUrl]);
 
   const seekTo = useCallback((time: number) => {
@@ -99,6 +203,31 @@ export function VideoFrameCover({
 
   if (!videoUrl.trim()) return null;
 
+  if (external) {
+    return (
+      <ExternalCoverPanel
+        external={external}
+        hasCover={hasCover}
+        folder={folder}
+        onCover={onCover}
+      />
+    );
+  }
+
+  if (!isFile) {
+    return (
+      <div className="space-y-2 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-soft)] p-3 sm:p-4">
+        <StudioLabel>Обложка из видео</StudioLabel>
+        <p className="text-xs text-[var(--text-faint)]">
+          Сейчас в поле видео не файл и не Rutube/YouTube. Вставь ссылку{" "}
+          <span className="text-[var(--text-muted)]">rutube.ru/video/…</span> или
+          загрузи короткий MP4/WebM — тогда можно будет поставить кадр/превью на
+          обложку.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div
       className={`space-y-3 rounded-[var(--radius-md)] border p-3 sm:p-4 ${
@@ -124,17 +253,23 @@ export function VideoFrameCover({
           muted
           playsInline
           preload="metadata"
+          crossOrigin="anonymous"
           onLoadedMetadata={(event) => {
             const video = event.currentTarget;
             setDuration(video.duration || 0);
             setReady(true);
-            // Prefer a frame slightly into the clip (not always black first frame).
+            setLoadError("");
             const start = Math.min(0.25, (video.duration || 1) * 0.05);
             video.currentTime = start;
             setCurrent(start);
           }}
           onSeeked={(event) => setCurrent(event.currentTarget.currentTime)}
           onTimeUpdate={(event) => setCurrent(event.currentTarget.currentTime)}
+          onError={() =>
+            setLoadError(
+              "Видео не открылось в браузере. Нужен прямой MP4/WebM (не страница Rutube)."
+            )
+          }
         />
       </div>
 
@@ -170,6 +305,7 @@ export function VideoFrameCover({
             : "Поставить кадр на обложку"}
       </button>
 
+      {loadError ? <p className="text-sm text-[var(--danger)]">{loadError}</p> : null}
       {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
     </div>
   );

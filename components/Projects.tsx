@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useContent } from "@/components/ContentProvider";
 import ProjectModal from "@/components/ProjectModal";
 import FramedImage from "@/components/FramedImage";
+import { ProjectVideo } from "@/components/ProjectVideo";
 import type { ProjectItem } from "@/lib/content";
 
 interface ProjectsProps {
@@ -199,14 +200,11 @@ const Projects = memo(function Projects({ lang }: ProjectsProps) {
                 />
               </div>
               {active.video ? (
-                <video
+                <ProjectVideo
                   className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-100"
                   src={active.video}
                   poster={active.image}
-                  muted
-                  loop
-                  playsInline
-                  autoPlay
+                  mode="card"
                   style={{
                     objectPosition: `${active.imageFrame?.x ?? 50}% ${active.imageFrame?.y ?? 50}%`,
                   }}

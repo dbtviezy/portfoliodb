@@ -937,7 +937,7 @@ export default function AdminDashboard() {
                   }
                 />
                 <VideoUploader
-                  label="Video loop (optional)"
+                  label="Video (MP4 loop or Rutube / YouTube)"
                   folder="projects"
                   value={currentProject.video ?? ""}
                   onChange={(value) => setEditingProject({ ...currentProject, video: value })}

@@ -102,9 +102,11 @@ export function VideoUploader({
         } ${uploading ? "pointer-events-none opacity-70" : ""}`}
       >
         <p className="text-sm text-[var(--text)]">
-          {uploading ? "Загрузка…" : value ? "Заменить loop" : "Перетащи короткое видео"}
+          {uploading ? "Загрузка…" : value ? "Заменить видео" : "Перетащи короткое видео"}
         </p>
-        <p className="mt-1 text-xs text-[var(--text-faint)]">MP4 / WebM · до 4.5 MB · mute loop</p>
+        <p className="mt-1 text-xs text-[var(--text-faint)]">
+          MP4 / WebM · до 4.5 MB · или ссылка Rutube / YouTube ниже
+        </p>
         <input
           ref={inputRef}
           type="file"
@@ -120,7 +122,7 @@ export function VideoUploader({
       <StudioInput
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="или URL видео"
+        placeholder="или URL: rutube.ru/video/… / YouTube / прямой MP4"
       />
       {value ? (
         <button

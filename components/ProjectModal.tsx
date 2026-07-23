@@ -7,6 +7,7 @@ import { normalizeExternalUrl } from "@/lib/project-links";
 import { resolveProjectGallery } from "@/lib/project-images";
 import PhotoLightbox from "@/components/PhotoLightbox";
 import FramedImage from "@/components/FramedImage";
+import { ProjectVideo } from "@/components/ProjectVideo";
 
 type ProjectModalProps = {
   project: ProjectItem | null;
@@ -89,14 +90,11 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
           >
             <div className="relative aspect-[16/10] shrink-0 overflow-hidden bg-[var(--bg-soft)] sm:aspect-[16/9]">
               {showVideo ? (
-                <video
+                <ProjectVideo
                   className="h-full w-full object-cover"
                   src={video}
                   poster={activeImage}
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
+                  mode="modal"
                 />
               ) : (
                 <button
