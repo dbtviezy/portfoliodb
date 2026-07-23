@@ -9,11 +9,20 @@ import {
 } from "@/lib/translate-content";
 
 type TranslateBody = {
-  /** Language currently edited in Studio — source of truth in the cloud DB. */
+  /** Studio tab language — where we read the source text from in the cloud. */
   lang?: LangCode | "RU" | "EN";
   scope?: "portfolio" | "project" | "projects";
   projectId?: number;
 };
+
+function pairMessage(sourceLang: LangCode, targetLang: LangCode, kind: string) {
+  const from = sourceLang.toUpperCase();
+  const to = targetLang.toUpperCase();
+  if (targetLang === "ru") {
+    return `${kind}: определили ${from} → перевели на ${to} и сохранили в облаке`;
+  }
+  return `${kind}: detected ${from} → translated to ${to} and saved to the cloud`;
+}
 
 export async function POST(request: Request) {
   const session = await requireAdminSession();
@@ -28,21 +37,19 @@ export async function POST(request: Request) {
 
   try {
     const body = (await request.json()) as TranslateBody;
-    const sourceLang = toLangCode(body.lang ?? "en");
+    const studioLang = toLangCode(body.lang ?? "en");
     const scope = body.scope ?? "portfolio";
 
     if (scope === "portfolio") {
-      const result = await translatePortfolioToOtherLang(sourceLang);
+      const result = await translatePortfolioToOtherLang(studioLang);
       return NextResponse.json({
         ok: true,
         scope,
-        sourceLang,
+        studioLang,
+        sourceLang: result.sourceLang,
         targetLang: result.targetLang,
         content: result.content,
-        message:
-          result.targetLang === "ru"
-            ? "Тексты карточки переведены на RU и сохранены в облаке"
-            : "Card texts translated to EN and saved to the cloud",
+        message: pairMessage(result.sourceLang, result.targetLang, "Карточка"),
       });
     }
 
@@ -55,28 +62,27 @@ export async function POST(request: Request) {
       return NextResponse.json({
         ok: true,
         scope,
-        sourceLang,
+        studioLang,
+        sourceLang: result.sourceLang,
         targetLang: result.targetLang,
         projectId: result.projectId,
-        message:
-          result.targetLang === "ru"
-            ? "Проект переведён на RU и сохранён"
-            : "Project translated to EN and saved",
+        message: pairMessage(result.sourceLang, result.targetLang, "Проект"),
       });
     }
 
     if (scope === "projects") {
-      const result = await translateAllProjectsToOtherLang(sourceLang);
+      const result = await translateAllProjectsToOtherLang(studioLang);
       return NextResponse.json({
         ok: true,
         scope,
-        sourceLang,
+        studioLang,
+        sourceLang: result.sourceLang,
         targetLang: result.targetLang,
         count: result.count,
         message:
           result.targetLang === "ru"
-            ? `Переведено проектов на RU: ${result.count}`
-            : `Translated projects to EN: ${result.count}`,
+            ? `Проекты: авто RU↔EN, сохранено ${result.count}`
+            : `Projects: auto RU↔EN, saved ${result.count}`,
       });
     }
 

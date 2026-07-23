@@ -10,11 +10,12 @@ import {
 } from "@/lib/contact-channels";
 import { parseProjectLinks, serializeProjectLinks } from "@/lib/project-links";
 import { parseProjectImages, serializeProjectImages } from "@/lib/project-images";
-import { translateFields, translateStringList } from "@/lib/translate-text";
-
-function otherLang(lang: LangCode): LangCode {
-  return lang === "en" ? "ru" : "en";
-}
+import {
+  detectRuOrEnFromFields,
+  otherLang,
+  translateFields,
+  translateStringList,
+} from "@/lib/translate-text";
 
 async function ensurePortfolioRow(lang: LangCode) {
   const { ensureBlankPortfolioRows } = await import("@/lib/ensure-seed");
@@ -49,12 +50,14 @@ async function syncListItems(
   });
 }
 
-/** Read portfolio from source lang in DB, translate text, write to target lang. */
+/**
+ * Read portfolio from Studio lang row, auto-detect RU/EN from the text,
+ * translate to the other language, save into that cloud row.
+ */
 export async function translatePortfolioToOtherLang(
-  sourceLang: LangCode
-): Promise<{ targetLang: LangCode; content: PortfolioContent }> {
-  const targetLang = otherLang(sourceLang);
-  const source = await getPortfolioContent(sourceLang);
+  studioLang: LangCode
+): Promise<{ sourceLang: LangCode; targetLang: LangCode; content: PortfolioContent }> {
+  const source = await getPortfolioContent(studioLang);
 
   const textFields = {
     heroLocation: source.hero.location,
@@ -86,11 +89,15 @@ export async function translatePortfolioToOtherLang(
     projectsAllTitle: source.projects.allTitle,
   };
 
-  const translated = await translateFields(textFields, sourceLang, targetLang);
-  const skills = await translateStringList(source.skills.items, sourceLang, targetLang);
+  // Auto-detect from real copy (not only Studio tab).
+  const detected = detectRuOrEnFromFields(textFields, studioLang);
+  const targetLang = otherLang(detected);
+
+  const translated = await translateFields(textFields, detected, targetLang);
+  const skills = await translateStringList(source.skills.items, detected, targetLang);
   const expertiseItems = await translateStringList(
     source.about.expertiseItems,
-    sourceLang,
+    detected,
     targetLang
   );
 
@@ -99,19 +106,19 @@ export async function translatePortfolioToOtherLang(
   );
   const translatedLabels = await translateFields(
     channelLabelFields,
-    sourceLang,
+    detected,
     targetLang
   );
   const channels: ContactChannel[] = source.contact.channels.map((channel, index) => ({
     ...channel,
-    label: translatedLabels[`c${index}`] || channel.label,
+    label: translatedLabels.fields[`c${index}`] || channel.label,
   }));
 
   const target = await ensurePortfolioRow(targetLang);
   await prisma.portfolio.update({
     where: { id: target.id },
     data: {
-      ...translated,
+      ...translated.fields,
       profileImage: source.about.profileImage,
       contactEmail: source.contact.email,
       contactTelegram: source.contact.telegram,
@@ -122,15 +129,16 @@ export async function translatePortfolioToOtherLang(
     },
   });
 
-  await syncListItems(targetLang, "skill", skills);
-  await syncListItems(targetLang, "expertise", expertiseItems);
+  await syncListItems(targetLang, "skill", skills.items);
+  await syncListItems(targetLang, "expertise", expertiseItems.items);
 
   const content = await getPortfolioContent(targetLang);
-  return { targetLang, content };
+  return { sourceLang: detected, targetLang, content };
 }
 
-/** Translate one project row into the other language (match by order, else create). */
+/** Translate one project: detect RU/EN from its text → write into the other lang row. */
 export async function translateProjectToOtherLang(projectId: number): Promise<{
+  sourceLang: LangCode;
   targetLang: LangCode;
   projectId: number;
 }> {
@@ -139,8 +147,7 @@ export async function translateProjectToOtherLang(projectId: number): Promise<{
     throw new Error("Project not found");
   }
 
-  const sourceLang = (source.lang === "ru" ? "ru" : "en") as LangCode;
-  const targetLang = otherLang(sourceLang);
+  const rowLang = (source.lang === "ru" ? "ru" : "en") as LangCode;
   const links = parseProjectLinks(source.links);
 
   const textFields: Record<string, string> = {
@@ -153,9 +160,12 @@ export async function translateProjectToOtherLang(projectId: number): Promise<{
     textFields[`linkLabel${index}`] = link.label;
   });
 
-  const translated = await translateFields(textFields, sourceLang, targetLang);
+  const detected = detectRuOrEnFromFields(textFields, rowLang);
+  const targetLang = otherLang(detected);
+
+  const translated = await translateFields(textFields, detected, targetLang);
   const translatedLinks = links.map((link, index) => ({
-    label: translated[`linkLabel${index}`] || link.label,
+    label: translated.fields[`linkLabel${index}`] || link.label,
     url: link.url,
   }));
 
@@ -167,20 +177,20 @@ export async function translateProjectToOtherLang(projectId: number): Promise<{
   });
 
   const data = {
-    title: translated.title || source.title,
-    category: translated.category || source.category,
+    title: translated.fields.title || source.title,
+    category: translated.fields.category || source.category,
     year: source.year,
-    description: translated.description || source.description,
-    detail: translated.detail ?? "",
+    description: translated.fields.description || source.description,
+    detail: translated.fields.detail ?? "",
     image: source.image,
-      images: serializeProjectImages(gallery),
-      video: source.video,
-      links: serializeProjectLinks(translatedLinks),
-      featured: source.featured,
-      completed: source.completed,
-      order: source.order,
-      imageFrame: source.imageFrame,
-    };
+    images: serializeProjectImages(gallery),
+    video: source.video,
+    links: serializeProjectLinks(translatedLinks),
+    featured: source.featured,
+    completed: source.completed,
+    order: source.order,
+    imageFrame: source.imageFrame,
+  };
 
   let savedId: number;
   if (existing) {
@@ -196,23 +206,28 @@ export async function translateProjectToOtherLang(projectId: number): Promise<{
     savedId = created.id;
   }
 
-  return { targetLang, projectId: savedId };
+  return { sourceLang: detected, targetLang, projectId: savedId };
 }
 
-/** Translate every project from source lang into the other lang. */
-export async function translateAllProjectsToOtherLang(sourceLang: LangCode): Promise<{
+/** Translate every project in the Studio lang list with per-item auto-detect. */
+export async function translateAllProjectsToOtherLang(studioLang: LangCode): Promise<{
+  sourceLang: LangCode;
   targetLang: LangCode;
   count: number;
 }> {
-  const targetLang = otherLang(sourceLang);
   const projects = await prisma.project.findMany({
-    where: { lang: sourceLang },
+    where: { lang: studioLang },
     orderBy: { order: "asc" },
   });
 
+  let lastTarget: LangCode = otherLang(studioLang);
+  let lastSource: LangCode = studioLang;
+
   for (const project of projects) {
-    await translateProjectToOtherLang(project.id);
+    const result = await translateProjectToOtherLang(project.id);
+    lastSource = result.sourceLang;
+    lastTarget = result.targetLang;
   }
 
-  return { targetLang, count: projects.length };
+  return { sourceLang: lastSource, targetLang: lastTarget, count: projects.length };
 }

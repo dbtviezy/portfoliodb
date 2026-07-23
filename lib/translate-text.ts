@@ -14,7 +14,49 @@ export function shouldSkipTranslation(text: string): boolean {
   return false;
 }
 
-async function translateWithGoogle(text: string, from: LangCode, to: LangCode): Promise<string> {
+/**
+ * Detect RU vs EN from text (Cyrillic share).
+ * Ignores URLs/emails/handles when sampling.
+ */
+export function detectRuOrEn(sample: string, fallback: LangCode = "en"): LangCode {
+  const cleaned = sample
+    .split(/\s+/)
+    .filter((token) => !shouldSkipTranslation(token))
+    .join(" ");
+  const letters = cleaned.replace(/[^a-zA-Zа-яА-ЯёЁ]/gu, "");
+  if (!letters) return fallback;
+  const cyrillic = (letters.match(/[а-яА-ЯёЁ]/gu) || []).length;
+  return cyrillic / letters.length >= 0.25 ? "ru" : "en";
+}
+
+export function detectRuOrEnFromFields(
+  fields: Record<string, string>,
+  fallback: LangCode = "en"
+): LangCode {
+  const sample = Object.values(fields)
+    .filter((value) => !shouldSkipTranslation(value))
+    .join("\n");
+  return detectRuOrEn(sample, fallback);
+}
+
+export function otherLang(lang: LangCode): LangCode {
+  return lang === "en" ? "ru" : "en";
+}
+
+/** Resolve translate direction from real text (+ optional Studio hint). */
+export function resolveTranslatePair(
+  fields: Record<string, string>,
+  hint?: LangCode
+): { from: LangCode; to: LangCode; detected: LangCode } {
+  const detected = detectRuOrEnFromFields(fields, hint ?? "en");
+  return { from: detected, to: otherLang(detected), detected };
+}
+
+async function translateWithGoogle(
+  text: string,
+  from: LangCode | "auto",
+  to: LangCode
+): Promise<{ text: string; detected: string }> {
   const url =
     `https://translate.googleapis.com/translate_a/single` +
     `?client=gtx&sl=${from}&tl=${to}&dt=t&q=${encodeURIComponent(text)}`;
@@ -26,10 +68,12 @@ async function translateWithGoogle(text: string, from: LangCode, to: LangCode): 
   if (!Array.isArray(data) || !Array.isArray(data[0])) {
     throw new Error("Unexpected translate response");
   }
-  return (data[0] as unknown[])
+  const translated = (data[0] as unknown[])
     .map((part) => (Array.isArray(part) ? String(part[0] ?? "") : ""))
     .join("")
     .trim();
+  const detected = typeof data[2] === "string" ? data[2] : from === "auto" ? to : from;
+  return { text: translated, detected };
 }
 
 async function translateWithOpenAI(
@@ -55,6 +99,7 @@ async function translateWithOpenAI(
           role: "system",
           content:
             `You translate portfolio copy from ${from} to ${to}. ` +
+            `Auto-detect if a field is already in the target language and leave it unchanged. ` +
             `Input is a JSON object of string fields. Return the same keys with translated values. ` +
             `Keep brand names, product names, URLs, emails, @handles, and short stats (e.g. 5+) unchanged. ` +
             `Sound natural for a motion/design portfolio.`,
@@ -90,24 +135,43 @@ async function translateWithOpenAI(
 
 export async function translateText(
   text: string,
-  from: LangCode,
+  from: LangCode | "auto",
   to: LangCode
 ): Promise<string> {
-  if (from === to) return text;
   if (shouldSkipTranslation(text)) return text;
-  return translateWithGoogle(text, from, to);
+  const resolvedFrom =
+    from === "auto" ? detectRuOrEn(text, to === "ru" ? "en" : "ru") : from;
+  if (resolvedFrom === to) return text;
+  const result = await translateWithGoogle(text, "auto", to);
+  return result.text;
 }
 
+export type TranslateFieldsResult = {
+  fields: Record<string, string>;
+  from: LangCode;
+  to: LangCode;
+};
+
 /**
- * Translate many named fields. Prefers OpenAI when OPENAI_API_KEY is set,
- * otherwise uses free Google translate endpoint field-by-field.
+ * Translate many named fields.
+ * Direction is auto-detected from text (RU↔EN) unless from/to are forced.
  */
 export async function translateFields(
   fields: Record<string, string>,
-  from: LangCode,
-  to: LangCode
-): Promise<Record<string, string>> {
-  if (from === to) return { ...fields };
+  from: LangCode | "auto" = "auto",
+  to?: LangCode
+): Promise<TranslateFieldsResult> {
+  const pair =
+    from === "auto" || !to
+      ? resolveTranslatePair(fields, typeof from === "string" && from !== "auto" ? from : "en")
+      : { from, to, detected: from };
+
+  const source = pair.from;
+  const target = pair.to;
+
+  if (source === target) {
+    return { fields: { ...fields }, from: source, to: target };
+  }
 
   const entries = Object.entries(fields);
   const skippable = Object.fromEntries(
@@ -118,32 +182,59 @@ export async function translateFields(
   );
 
   if (Object.keys(translatable).length === 0) {
-    return { ...fields };
+    return { fields: { ...fields }, from: source, to: target };
   }
 
-  const viaOpenAI = await translateWithOpenAI(translatable, from, to);
+  const viaOpenAI = await translateWithOpenAI(translatable, source, target);
   if (viaOpenAI) {
-    return { ...fields, ...skippable, ...viaOpenAI };
+    return {
+      fields: { ...fields, ...skippable, ...viaOpenAI },
+      from: source,
+      to: target,
+    };
   }
 
   const translated: Record<string, string> = {};
   for (const [key, value] of Object.entries(translatable)) {
-    translated[key] = await translateWithGoogle(value, from, to);
+    // Per-field: if this field looks like the target already, keep it.
+    const fieldLang = detectRuOrEn(value, source);
+    if (fieldLang === target) {
+      translated[key] = value;
+      continue;
+    }
+    const result = await translateWithGoogle(value, "auto", target);
+    translated[key] = result.text;
     await sleep(40);
   }
-  return { ...fields, ...skippable, ...translated };
+
+  return {
+    fields: { ...fields, ...skippable, ...translated },
+    from: source,
+    to: target,
+  };
 }
 
 export async function translateStringList(
   items: string[],
-  from: LangCode,
-  to: LangCode
-): Promise<string[]> {
-  if (items.length === 0 || from === to) return [...items];
+  from: LangCode | "auto" = "auto",
+  to?: LangCode
+): Promise<{ items: string[]; from: LangCode; to: LangCode }> {
+  if (items.length === 0) {
+    const fallback = typeof from === "string" && from !== "auto" ? from : "en";
+    return {
+      items: [],
+      from: fallback,
+      to: to ?? otherLang(fallback),
+    };
+  }
   const mapped = await translateFields(
     Object.fromEntries(items.map((item, index) => [`i${index}`, item])),
     from,
     to
   );
-  return items.map((_, index) => mapped[`i${index}`] ?? items[index]);
+  return {
+    items: items.map((_, index) => mapped.fields[`i${index}`] ?? items[index]),
+    from: mapped.from,
+    to: mapped.to,
+  };
 }

@@ -94,8 +94,6 @@ export default function AdminDashboard() {
   const [translating, setTranslating] = useState(false);
 
   const currentProject = editingProject;
-  const targetLang = lang === "en" ? "ru" : "en";
-  const targetLangLabel = targetLang.toUpperCase();
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -345,7 +343,7 @@ export default function AdminDashboard() {
         return;
       }
       await loadData();
-      setMessage(data.message ?? `Переведено на ${targetLangLabel} и сохранено в облаке`);
+      setMessage(data.message ?? "Автоперевод RU↔EN сохранён в облаке");
     } catch {
       setMessage("Не удалось перевести");
     } finally {
@@ -592,7 +590,7 @@ export default function AdminDashboard() {
                     disabled={saving || translating || projects.length === 0}
                     onClick={() => void translateCloud("projects")}
                   >
-                    {translating ? "…" : `Translate all → ${targetLangLabel}`}
+                    {translating ? "…" : "Auto RU↔EN"}
                   </StudioButton>
                   <StudioButton
                     type="button"
@@ -861,7 +859,7 @@ export default function AdminDashboard() {
                 disabled={saving || translating}
                 onClick={() => void translateCloud("portfolio")}
               >
-                {translating ? "Translating…" : `Save & translate → ${targetLangLabel}`}
+                {translating ? "Translating…" : "Save & auto RU↔EN"}
               </StudioButton>
               {message && (
                 <span className="text-sm text-[var(--text-muted)]">{message}</span>
@@ -1046,7 +1044,7 @@ export default function AdminDashboard() {
                   disabled={saving || translating}
                   onClick={() => void translateCloud("project", currentProject.id)}
                 >
-                  {translating ? "Translating…" : `Save & translate → ${targetLangLabel}`}
+                  {translating ? "Translating…" : "Save & auto RU↔EN"}
                 </StudioButton>
                 <StudioButton type="button" variant="ghost" onClick={closeProjectEditor}>
                   Cancel
