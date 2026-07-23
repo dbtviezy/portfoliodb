@@ -151,8 +151,7 @@ export async function translateProjectToOtherLang(projectId: number): Promise<{
   const links = parseProjectLinks(source.links);
 
   const textFields: Record<string, string> = {
-    title: source.title,
-    category: source.category,
+    // title + category stay shared across EN/RU — do not translate
     description: source.description,
     detail: source.detail ?? "",
   };
@@ -160,7 +159,14 @@ export async function translateProjectToOtherLang(projectId: number): Promise<{
     textFields[`linkLabel${index}`] = link.label;
   });
 
-  const detected = detectRuOrEnFromFields(textFields, rowLang);
+  const detected = detectRuOrEnFromFields(
+    {
+      ...textFields,
+      // Include title only for language detection, not for translation output.
+      _sample: `${source.title} ${source.description} ${source.detail ?? ""}`,
+    },
+    rowLang
+  );
   const targetLang = otherLang(detected);
 
   const translated = await translateFields(textFields, detected, targetLang);
@@ -177,8 +183,8 @@ export async function translateProjectToOtherLang(projectId: number): Promise<{
   });
 
   const data = {
-    title: translated.fields.title || source.title,
-    category: translated.fields.category || source.category,
+    title: source.title,
+    category: source.category,
     year: source.year,
     description: translated.fields.description || source.description,
     detail: translated.fields.detail ?? "",

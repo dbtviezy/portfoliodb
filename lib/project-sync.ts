@@ -75,10 +75,12 @@ export async function ensureProjectLanguageMirrors(): Promise<void> {
         (sibling.images === "[]" && source.images && source.images !== "[]") ||
         (!sibling.video?.trim() && source.video?.trim());
 
-      if (needsMedia || sibling.completed !== source.completed || sibling.featured !== source.featured) {
+      if (needsMedia || sibling.completed !== source.completed || sibling.featured !== source.featured || sibling.title !== source.title || sibling.category !== source.category) {
         await prisma.project.update({
           where: { id: sibling.id },
           data: {
+            title: source.title,
+            category: source.category,
             image: source.image?.trim() ? source.image : sibling.image,
             images:
               source.images && source.images !== "[]" ? source.images : sibling.images,
@@ -122,12 +124,11 @@ export async function upsertProjectSibling(sourceId: number): Promise<void> {
       where: { id: existing.id },
       data: {
         ...shared,
-        // Don't overwrite sibling text if it was already customized/translated
-        // unless sibling text is empty or identical placeholder.
-        ...(!existing.title?.trim()
+        // Title and category are shared brand labels — always keep in sync.
+        title: source.title,
+        category: source.category,
+        ...(!existing.description?.trim()
           ? {
-              title: source.title,
-              category: source.category,
               description: source.description,
               detail: source.detail ?? "",
               links: source.links || "[]",
