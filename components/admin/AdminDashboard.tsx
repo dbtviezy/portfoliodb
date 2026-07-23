@@ -286,7 +286,7 @@ export default function AdminDashboard() {
       setContent(next);
       patchStudioContent(lang, next);
       bustPublicContentCache();
-      showToast("ok", "Сохранено — сразу на сайте");
+      showToast("ok", "Сохранено — сайт обновится сам");
       return true;
     } catch {
       showToast("err", "Не удалось сохранить");
@@ -340,7 +340,7 @@ export default function AdminDashboard() {
       setEditingProject(null);
       setIsCreatingProject(false);
       bustPublicContentCache();
-      showToast("ok", isNew ? "Проект создан" : "Проект обновлён — сразу на сайте");
+      showToast("ok", isNew ? "Проект создан — сайт обновится сам" : "Проект обновлён — сайт обновится сам");
       return true;
     } catch {
       showToast("err", "Не удалось сохранить проект");

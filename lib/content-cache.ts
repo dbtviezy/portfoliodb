@@ -9,7 +9,9 @@ type CacheEntry = {
 const memory = new Map<string, CacheEntry>();
 const TTL_MS = 12 * 60 * 1000;
 const STORAGE_PREFIX = "dbtviezy-content-v1:";
+/** localStorage — shared across tabs (Studio → public site). */
 const BUST_KEY = "dbtviezy-content-bust";
+const CHANNEL_NAME = "dbtviezy-content";
 
 /** Tiny FNV-1a style hash — enough to detect content changes, not crypto. */
 export function hashContent(data: unknown): string {
@@ -49,6 +51,19 @@ function writeSession(lang: string, entry: CacheEntry) {
   }
 }
 
+function clearSessionContent() {
+  if (typeof window === "undefined") return;
+  try {
+    for (const key of Object.keys(window.sessionStorage)) {
+      if (key.startsWith(STORAGE_PREFIX)) {
+        window.sessionStorage.removeItem(key);
+      }
+    }
+  } catch {
+    // ignore
+  }
+}
+
 /** Instant paint from RAM or sessionStorage (same tab / soft navigations). */
 export function readCachedContent(lang: string): CacheEntry | null {
   const key = lang.toLowerCase();
@@ -74,36 +89,79 @@ export function writeCachedContent(lang: string, data: PortfolioContent) {
   return entry.hash;
 }
 
-/** Call after Studio saves so the public site refetches on next focus/load. */
+/**
+ * Call after Studio saves. Clears this tab's cache and signals other tabs
+ * via localStorage + BroadcastChannel so the public site soft-refetches
+ * without a hard reload.
+ */
 export function bustPublicContentCache() {
   memory.clear();
+  clearSessionContent();
   if (typeof window === "undefined") return;
+
+  const stamp = String(Date.now());
   try {
-    for (const key of Object.keys(window.sessionStorage)) {
-      if (key.startsWith(STORAGE_PREFIX)) {
-        window.sessionStorage.removeItem(key);
-      }
-    }
-    window.sessionStorage.setItem(BUST_KEY, String(Date.now()));
+    window.localStorage.setItem(BUST_KEY, stamp);
   } catch {
     // ignore
   }
+
+  try {
+    const channel = new BroadcastChannel(CHANNEL_NAME);
+    channel.postMessage({ type: "bust", t: stamp });
+    channel.close();
+  } catch {
+    // BroadcastChannel unsupported — storage event still covers other tabs.
+  }
 }
 
+/** True if Studio (or another tab) asked for a refresh since last consume. */
 export function consumeContentBustFlag(): boolean {
   if (typeof window === "undefined") return false;
   try {
-    const raw = window.sessionStorage.getItem(BUST_KEY);
+    const raw = window.localStorage.getItem(BUST_KEY);
     if (!raw) return false;
-    window.sessionStorage.removeItem(BUST_KEY);
+    window.localStorage.removeItem(BUST_KEY);
+    memory.clear();
+    clearSessionContent();
     return true;
   } catch {
     return false;
   }
 }
 
-export function sameContentHash(lang: string, data: PortfolioContent): boolean {
-  const cached = readCachedContent(lang);
-  if (!cached) return false;
-  return cached.hash === hashContent(data);
+export function subscribeContentBust(onBust: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+
+  let channel: BroadcastChannel | null = null;
+  try {
+    channel = new BroadcastChannel(CHANNEL_NAME);
+    channel.onmessage = (event) => {
+      if (event?.data?.type === "bust") {
+        memory.clear();
+        clearSessionContent();
+        onBust();
+      }
+    };
+  } catch {
+    channel = null;
+  }
+
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === BUST_KEY && event.newValue) {
+      memory.clear();
+      clearSessionContent();
+      onBust();
+    }
+  };
+  window.addEventListener("storage", onStorage);
+
+  return () => {
+    window.removeEventListener("storage", onStorage);
+    try {
+      channel?.close();
+    } catch {
+      // ignore
+    }
+  };
 }

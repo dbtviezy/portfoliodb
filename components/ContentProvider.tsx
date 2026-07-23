@@ -16,6 +16,7 @@ import {
   consumeContentBustFlag,
   hashContent,
   readCachedContent,
+  subscribeContentBust,
   writeCachedContent,
 } from "@/lib/content-cache";
 
@@ -82,6 +83,8 @@ export function ContentProvider({
   useEffect(() => {
     const stored = readStoredLang(initialLang);
     setLangState(stored);
+    // If Studio saved while this tab was away, drop stale cache before paint.
+    consumeContentBustFlag();
     const cached = readCachedContent(stored);
     if (cached) {
       setContent(cached.data);
@@ -132,7 +135,7 @@ export function ContentProvider({
         setContent((previous) => previous ?? cached.data);
         if (!hashRef.current) hashRef.current = cached.hash;
         setReady(true);
-      } else {
+      } else if (!content) {
         setLoading(true);
       }
 
@@ -172,13 +175,21 @@ export function ContentProvider({
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- soft revalidate; content intentionally omitted
   }, [lang, hydrated, reloadTick]);
 
   useEffect(() => {
     if (!hydrated) return;
 
+    const softRefresh = () => {
+      // Always revalidate in background when the tab is shown again —
+      // hash compare skips React updates if nothing changed.
+      refresh();
+    };
+
     const onFocus = () => {
-      if (consumeContentBustFlag()) refresh();
+      consumeContentBustFlag();
+      softRefresh();
     };
     const onVisibility = () => {
       if (document.visibilityState === "visible") onFocus();
@@ -186,9 +197,15 @@ export function ContentProvider({
 
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisibility);
+    const unsubscribe = subscribeContentBust(() => {
+      consumeContentBustFlag();
+      softRefresh();
+    });
+
     return () => {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibility);
+      unsubscribe();
     };
   }, [hydrated, refresh]);
 
