@@ -534,7 +534,8 @@ export default function AdminDashboard() {
 
               <div className="space-y-2">
                 <p className="text-xs text-[var(--text-faint)]">
-                  Перетащи фото на превью. В Edit — несколько фото и статус «закончено».
+                  На карточке — только лицевая. Галерея листается в открытом проекте. В Edit выбери
+                  обложку и статус.
                 </p>
                 {projects.map((project, index) => (
                   <div

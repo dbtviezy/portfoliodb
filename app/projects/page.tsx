@@ -58,11 +58,6 @@ const ProjectCard = memo(function ProjectCard({
             ? " · в работе"
             : " · in progress"
           : ""}
-        {(project.images?.length ?? 0) > 1
-          ? lang === "RU"
-            ? ` · ${project.images!.length} фото`
-            : ` · ${project.images!.length} photos`
-          : ""}
       </p>
       <p className="line-clamp-2 text-[13px] leading-relaxed text-[var(--text-faint)] sm:text-sm">
         {project.description}

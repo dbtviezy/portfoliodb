@@ -69,12 +69,11 @@ export function GalleryUploader({
     [folder, images, onChange]
   );
 
-  const move = (index: number, delta: number) => {
-    const nextIndex = index + delta;
-    if (nextIndex < 0 || nextIndex >= images.length) return;
+  const setAsCover = (index: number) => {
+    if (index <= 0 || index >= images.length) return;
     const next = [...images];
     const [item] = next.splice(index, 1);
-    next.splice(nextIndex, 0, item);
+    next.unshift(item);
     onChange(next);
   };
 
@@ -84,52 +83,57 @@ export function GalleryUploader({
 
   return (
     <div className="space-y-3">
-      <StudioLabel>{label}</StudioLabel>
+      <div>
+        <StudioLabel>{label}</StudioLabel>
+        <p className="mt-1 text-xs text-[var(--text-faint)]">
+          На сайте листаются только в открытом проекте. Здесь выбери лицевую (обложку).
+        </p>
+      </div>
 
       {images.length > 0 ? (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {images.map((url, index) => (
-            <div
-              key={`${url}-${index}`}
-              className="group relative overflow-hidden rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-soft)]"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt="" className="aspect-[4/3] w-full object-cover" />
-              <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-black/55 px-1.5 py-1">
-                <span className="text-[10px] text-white/80">
-                  {index === 0 ? "Обложка" : `#${index + 1}`}
-                </span>
-                <div className="flex gap-0.5">
-                  <button
-                    type="button"
-                    aria-label="Move left"
-                    disabled={index === 0}
-                    onClick={() => move(index, -1)}
-                    className="rounded px-1.5 text-[11px] text-white/85 disabled:opacity-30"
-                  >
-                    ←
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Move right"
-                    disabled={index === images.length - 1}
-                    onClick={() => move(index, 1)}
-                    className="rounded px-1.5 text-[11px] text-white/85 disabled:opacity-30"
-                  >
-                    →
-                  </button>
+          {images.map((url, index) => {
+            const isCover = index === 0;
+            return (
+              <div
+                key={`${url}-${index}`}
+                className={`relative overflow-hidden rounded-[var(--radius-md)] border bg-[var(--bg-soft)] ${
+                  isCover ? "border-[var(--text-muted)]" : "border-[var(--border)]"
+                }`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt="" className="aspect-[4/3] w-full object-cover" />
+
+                {isCover ? (
+                  <span className="absolute left-2 top-2 rounded bg-black/70 px-2 py-0.5 text-[10px] font-medium tracking-wide text-white">
+                    Лицевая
+                  </span>
+                ) : null}
+
+                <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-center gap-1 bg-black/60 px-1.5 py-1.5">
+                  {!isCover ? (
+                    <button
+                      type="button"
+                      onClick={() => setAsCover(index)}
+                      className="rounded bg-white/15 px-2 py-0.5 text-[10px] text-white transition hover:bg-white/25"
+                    >
+                      Сделать лицевой
+                    </button>
+                  ) : (
+                    <span className="px-1 text-[10px] text-white/70">на карточке и в карусели</span>
+                  )}
                   <button
                     type="button"
                     aria-label="Remove"
                     onClick={() => removeAt(index)}
-                    className="rounded px-1.5 text-[11px] text-white/85 hover:text-white"
+                    className="ml-auto rounded px-1.5 text-[11px] text-white/85 hover:text-white"
                   >
                     ×
                   </button>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : null}
 
@@ -170,7 +174,7 @@ export function GalleryUploader({
           {uploading ? "Загрузка…" : "Добавить фото"}
         </p>
         <p className="mt-1 text-xs text-[var(--text-faint)]">
-          несколько файлов · JPEG / PNG / WebP · первое = обложка
+          несколько файлов · JPEG / PNG / WebP
         </p>
         <input
           ref={inputRef}

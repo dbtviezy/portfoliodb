@@ -218,7 +218,6 @@ const Projects = memo(function Projects({ lang }: ProjectsProps) {
                       ? " · в работе"
                       : " · in progress"
                     : ""}
-                  {(active.images?.length ?? 0) > 1 ? ` · ${active.images!.length}` : ""}
                   {active.video ? " · motion" : ""}
                 </p>
               </div>
