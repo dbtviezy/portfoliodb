@@ -260,32 +260,34 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
               </div>
 
               {gallery.length > 0 ? (
-                <div className="mb-6 flex gap-2.5 overflow-x-auto pb-2 pt-1">
-                  {gallery.map((url, index) => {
-                    const active = index === activeIndex;
-                    return (
-                      <button
-                        key={`${url}-thumb-${index}`}
-                        type="button"
-                        onClick={() => {
-                          setActiveIndex(index);
-                          setLightboxOpen(true);
-                        }}
-                        className={`group relative h-16 w-[5.5rem] shrink-0 overflow-hidden rounded-[var(--radius-md)] border transition duration-300 sm:h-[4.75rem] sm:w-28 ${
-                          active
-                            ? "z-[1] scale-110 border-[var(--text-muted)] shadow-[0_10px_28px_rgba(0,0,0,0.28)]"
-                            : "border-[var(--border)] opacity-75 hover:z-[1] hover:scale-110 hover:opacity-100 hover:shadow-[0_10px_24px_rgba(0,0,0,0.22)]"
-                        }`}
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={url}
-                          alt=""
-                          className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
-                        />
-                      </button>
-                    );
-                  })}
+                <div className="mb-6 -mx-1 overflow-x-auto px-1 pb-3 pt-2">
+                  <div className="flex w-max min-w-full gap-2.5">
+                    {gallery.map((url, index) => {
+                      const active = index === activeIndex;
+                      return (
+                        <button
+                          key={`${url}-thumb-${index}`}
+                          type="button"
+                          onClick={() => {
+                            setActiveIndex(index);
+                            setLightboxOpen(true);
+                          }}
+                          className={`group relative h-16 w-[5.5rem] shrink-0 overflow-hidden rounded-[var(--radius-md)] border transition duration-300 sm:h-[4.75rem] sm:w-28 ${
+                            active
+                              ? "z-[1] border-[var(--text-muted)] shadow-[0_10px_28px_rgba(0,0,0,0.28)] ring-1 ring-[var(--text-muted)]/40"
+                              : "border-[var(--border)] opacity-75 hover:z-[1] hover:opacity-100 hover:shadow-[0_10px_24px_rgba(0,0,0,0.22)]"
+                          }`}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={url}
+                            alt=""
+                            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               ) : null}
 

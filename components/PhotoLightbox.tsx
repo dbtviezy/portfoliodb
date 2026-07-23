@@ -131,32 +131,34 @@ export default function PhotoLightbox({
           </div>
 
           {images.length > 1 ? (
-            <div className="relative z-10 flex justify-center gap-2 overflow-x-auto px-4 pb-5 sm:pb-6">
-              {images.map((url, thumbIndex) => {
-                const active = thumbIndex === safeIndex;
-                return (
-                  <button
-                    key={`${url}-lb-${thumbIndex}`}
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onIndexChange(thumbIndex);
-                    }}
-                    className={`group relative h-14 w-[4.5rem] shrink-0 overflow-hidden rounded-[var(--radius-sm)] border transition duration-300 sm:h-16 sm:w-24 ${
-                      active
-                        ? "border-white/70 scale-110 shadow-[0_8px_24px_rgba(0,0,0,0.35)]"
-                        : "border-white/20 opacity-70 hover:scale-110 hover:opacity-100"
-                    }`}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={url}
-                      alt=""
-                      className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
-                    />
-                  </button>
-                );
-              })}
+            <div className="relative z-10 overflow-x-auto px-4 pb-5 sm:pb-6">
+              <div className="flex w-max min-w-full justify-center gap-2 px-1 py-1">
+                {images.map((url, thumbIndex) => {
+                  const active = thumbIndex === safeIndex;
+                  return (
+                    <button
+                      key={`${url}-lb-${thumbIndex}`}
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onIndexChange(thumbIndex);
+                      }}
+                      className={`group relative h-14 w-[4.5rem] shrink-0 overflow-hidden rounded-[var(--radius-sm)] border transition duration-300 sm:h-16 sm:w-24 ${
+                        active
+                          ? "border-white/70 shadow-[0_8px_24px_rgba(0,0,0,0.35)] ring-1 ring-white/35"
+                          : "border-white/20 opacity-70 hover:opacity-100"
+                      }`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={url}
+                        alt=""
+                        className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                      />
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           ) : null}
         </motion.div>
