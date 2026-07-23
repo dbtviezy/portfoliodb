@@ -187,13 +187,13 @@ const Projects = memo(function Projects({ lang }: ProjectsProps) {
                 transition: { duration: 0.32, ease },
               }}
               transition={{ duration: 0.45, ease }}
-              className="group absolute left-[14%] top-0 z-10 h-full w-[72%] cursor-pointer overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg-elevated)] text-left shadow-[var(--shadow-panel)] outline-none [transform-style:preserve-3d] hover:border-[var(--border-strong)] focus-visible:ring-1 focus-visible:ring-white/30 sm:left-[21%] sm:w-[58%] md:left-[24%] md:w-[52%]"
+              className="group absolute left-[14%] top-0 z-10 h-full w-[72%] cursor-pointer overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg-elevated)] text-left shadow-[var(--shadow-panel)] outline-none transition duration-500 [transform-style:preserve-3d] hover:z-20 hover:scale-[1.035] hover:border-[var(--border-strong)] hover:shadow-[0_28px_60px_rgba(0,0,0,0.4)] focus-visible:ring-1 focus-visible:ring-white/30 sm:left-[21%] sm:w-[58%] md:left-[24%] md:w-[52%]"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={active.image}
                 alt={active.title}
-                className="h-full w-full object-cover"
+                className="h-full w-full object-cover transition duration-700 ease-out group-hover:scale-[1.06]"
                 draggable={false}
               />
               {active.video ? (

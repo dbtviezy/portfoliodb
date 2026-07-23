@@ -32,20 +32,23 @@ const ProjectCard = memo(function ProjectCard({
       onClick={() => onOpen(project)}
       initial={{ opacity: 0, y: 18 }}
       whileInView={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -10, scale: 1.035 }}
+      whileTap={{ scale: 0.985 }}
       viewport={{ once: true, margin: "-80px" }}
       transition={{ delay: Math.min(index * 0.06, 0.3), duration: 0.45 }}
-      className="group block w-full cursor-pointer text-left"
+      className="group relative z-0 block w-full cursor-pointer text-left hover:z-10"
     >
-      <div className="mb-4 aspect-[16/10] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg-elevated)] sm:mb-5">
+      <div className="mb-4 aspect-[16/10] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg-elevated)] shadow-[0_0_0_transparent] transition duration-500 group-hover:border-[var(--border-strong)] group-hover:shadow-[0_22px_50px_rgba(0,0,0,0.35)] sm:mb-5">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={project.image}
           alt={project.title}
-          className="h-full w-full object-cover opacity-85 transition duration-700 ease-out group-hover:scale-[1.03] group-hover:opacity-100"
+          className="h-full w-full object-cover opacity-85 transition duration-700 ease-out group-hover:scale-[1.08] group-hover:opacity-100"
         />
       </div>
 
       <div className="mb-1 flex items-start justify-between gap-3 sm:mb-1.5">
-        <h3 className="text-lg font-semibold tracking-tight text-[var(--text)] transition group-hover:text-[var(--text-muted)] sm:text-xl">
+        <h3 className="text-lg font-semibold tracking-tight text-[var(--text)] transition group-hover:text-[var(--text)] sm:text-xl">
           {project.title}
         </h3>
         <span className="shrink-0 font-mono text-xs text-[var(--text-faint)] sm:text-sm">{project.year}</span>
@@ -145,7 +148,7 @@ function ProjectsPageContent() {
           paddingBottom: "calc(var(--section-y) + var(--safe-bottom))",
         }}
       >
-        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-7 sm:grid-cols-2 sm:gap-10 lg:grid-cols-3 lg:gap-x-8 lg:gap-y-12">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-7 overflow-visible sm:grid-cols-2 sm:gap-10 lg:grid-cols-3 lg:gap-x-8 lg:gap-y-14">
           {projects.map((project, index) => (
             <ProjectCard
               key={project.id ?? index}

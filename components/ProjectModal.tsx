@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import type { ProjectItem } from "@/lib/content";
 import { normalizeExternalUrl } from "@/lib/project-links";
 import { resolveProjectGallery } from "@/lib/project-images";
+import PhotoLightbox from "@/components/PhotoLightbox";
 
 type ProjectModalProps = {
   project: ProjectItem | null;
@@ -14,6 +15,7 @@ type ProjectModalProps = {
 
 export default function ProjectModal({ project, lang, onClose }: ProjectModalProps) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const gallery = useMemo(
     () => (project ? resolveProjectGallery(project.image, project.images ?? []) : []),
@@ -22,10 +24,11 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
 
   useEffect(() => {
     setActiveIndex(0);
+    setLightboxOpen(false);
   }, [project?.id, project?.image]);
 
   useEffect(() => {
-    if (!project) return;
+    if (!project || lightboxOpen) return;
 
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -46,7 +49,7 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
       document.body.style.overflow = previous;
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [project, onClose, gallery.length]);
+  }, [project, onClose, gallery.length, lightboxOpen]);
 
   const links = project?.links?.filter((link) => link.label && link.url) ?? [];
   const summary = project?.description?.trim() || "";
@@ -54,6 +57,7 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
   const video = project?.video?.trim() || "";
   const completed = project?.completed !== false;
   const activeImage = gallery[activeIndex] || project?.image || "";
+  const showVideo = Boolean(video && activeIndex === 0 && !lightboxOpen);
 
   return (
     <AnimatePresence>
@@ -83,7 +87,7 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
             className="relative z-10 flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-[1.25rem] border border-[var(--border)] bg-[var(--bg-panel)] shadow-[var(--shadow-panel)] sm:rounded-[var(--radius-xl)]"
           >
             <div className="relative aspect-[16/10] shrink-0 overflow-hidden bg-[var(--bg-soft)] sm:aspect-[16/9]">
-              {video && activeIndex === 0 ? (
+              {showVideo ? (
                 <video
                   className="h-full w-full object-cover"
                   src={video}
@@ -94,18 +98,28 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
                   playsInline
                 />
               ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={activeImage}
-                  alt={project.title}
-                  className="h-full w-full object-cover"
-                />
+                <button
+                  type="button"
+                  className="group relative h-full w-full cursor-zoom-in"
+                  onClick={() => setLightboxOpen(true)}
+                  aria-label={lang === "RU" ? "Открыть фото" : "Open photo"}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={activeImage}
+                    alt={project.title}
+                    className="h-full w-full object-cover transition duration-700 ease-out group-hover:scale-[1.04]"
+                  />
+                  <span className="pointer-events-none absolute bottom-3 left-3 rounded-full border border-white/20 bg-black/45 px-2.5 py-1 text-[10px] text-white/85 opacity-0 backdrop-blur transition group-hover:opacity-100 sm:bottom-4 sm:left-4">
+                    {lang === "RU" ? "Увеличить" : "Enlarge"}
+                  </span>
+                </button>
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-panel)] via-transparent to-transparent" />
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[var(--bg-panel)] via-transparent to-transparent" />
               <button
                 type="button"
                 onClick={onClose}
-                className="absolute right-3 top-3 rounded-full border border-[var(--border)] bg-[var(--bg)]/80 px-3 py-1.5 text-xs text-[var(--text-muted)] backdrop-blur transition hover:text-[var(--text)] sm:right-4 sm:top-4"
+                className="absolute right-3 top-3 z-[2] rounded-full border border-[var(--border)] bg-[var(--bg)]/80 px-3 py-1.5 text-xs text-[var(--text-muted)] backdrop-blur transition hover:text-[var(--text)] sm:right-4 sm:top-4"
               >
                 {lang === "RU" ? "Закрыть" : "Close"}
               </button>
@@ -118,7 +132,7 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
                     onClick={() =>
                       setActiveIndex((index) => (index - 1 + gallery.length) % gallery.length)
                     }
-                    className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full border border-[var(--border)] bg-[var(--bg)]/75 px-2.5 py-1.5 text-sm text-[var(--text-muted)] backdrop-blur transition hover:text-[var(--text)]"
+                    className="absolute left-3 top-1/2 z-[2] -translate-y-1/2 rounded-full border border-[var(--border)] bg-[var(--bg)]/75 px-2.5 py-1.5 text-sm text-[var(--text-muted)] backdrop-blur transition hover:text-[var(--text)]"
                   >
                     ←
                   </button>
@@ -126,24 +140,21 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
                     type="button"
                     aria-label="Next photo"
                     onClick={() => setActiveIndex((index) => (index + 1) % gallery.length)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full border border-[var(--border)] bg-[var(--bg)]/75 px-2.5 py-1.5 text-sm text-[var(--text-muted)] backdrop-blur transition hover:text-[var(--text)]"
+                    className="absolute right-3 top-1/2 z-[2] -translate-y-1/2 rounded-full border border-[var(--border)] bg-[var(--bg)]/75 px-2.5 py-1.5 text-sm text-[var(--text-muted)] backdrop-blur transition hover:text-[var(--text)]"
                   >
                     →
                   </button>
-                  <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
-                    {gallery.map((url, index) => (
-                      <button
-                        key={`${url}-${index}`}
-                        type="button"
-                        aria-label={`Photo ${index + 1}`}
-                        onClick={() => setActiveIndex(index)}
-                        className={`h-1.5 w-1.5 rounded-full transition ${
-                          index === activeIndex ? "bg-white" : "bg-white/40"
-                        }`}
-                      />
-                    ))}
-                  </div>
                 </>
+              ) : null}
+
+              {showVideo && activeImage ? (
+                <button
+                  type="button"
+                  onClick={() => setLightboxOpen(true)}
+                  className="absolute bottom-3 right-3 z-[2] rounded-full border border-white/20 bg-black/45 px-2.5 py-1 text-[10px] text-white/85 backdrop-blur transition hover:bg-black/60 sm:bottom-4 sm:right-4"
+                >
+                  {lang === "RU" ? "Фото" : "Photo"}
+                </button>
               ) : null}
             </div>
 
@@ -178,23 +189,33 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
                 </span>
               </div>
 
-              {gallery.length > 1 ? (
-                <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
-                  {gallery.map((url, index) => (
-                    <button
-                      key={`${url}-thumb-${index}`}
-                      type="button"
-                      onClick={() => setActiveIndex(index)}
-                      className={`relative h-14 w-20 shrink-0 overflow-hidden rounded-[var(--radius-sm)] border transition ${
-                        index === activeIndex
-                          ? "border-[var(--text-muted)]"
-                          : "border-[var(--border)] opacity-70 hover:opacity-100"
-                      }`}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={url} alt="" className="h-full w-full object-cover" />
-                    </button>
-                  ))}
+              {gallery.length > 0 ? (
+                <div className="mb-6 flex gap-2.5 overflow-x-auto pb-2 pt-1">
+                  {gallery.map((url, index) => {
+                    const active = index === activeIndex;
+                    return (
+                      <button
+                        key={`${url}-thumb-${index}`}
+                        type="button"
+                        onClick={() => {
+                          setActiveIndex(index);
+                          setLightboxOpen(true);
+                        }}
+                        className={`group relative h-16 w-[5.5rem] shrink-0 overflow-hidden rounded-[var(--radius-md)] border transition duration-300 sm:h-[4.75rem] sm:w-28 ${
+                          active
+                            ? "z-[1] scale-110 border-[var(--text-muted)] shadow-[0_10px_28px_rgba(0,0,0,0.28)]"
+                            : "border-[var(--border)] opacity-75 hover:z-[1] hover:scale-110 hover:opacity-100 hover:shadow-[0_10px_24px_rgba(0,0,0,0.22)]"
+                        }`}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={url}
+                          alt=""
+                          className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
+                        />
+                      </button>
+                    );
+                  })}
                 </div>
               ) : null}
 
@@ -248,6 +269,16 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
               )}
             </div>
           </motion.div>
+
+          <PhotoLightbox
+            open={lightboxOpen}
+            images={gallery}
+            index={activeIndex}
+            alt={project.title}
+            lang={lang}
+            onClose={() => setLightboxOpen(false)}
+            onIndexChange={setActiveIndex}
+          />
         </motion.div>
       )}
     </AnimatePresence>
