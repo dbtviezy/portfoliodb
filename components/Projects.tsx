@@ -208,10 +208,10 @@ const Projects = memo(function Projects({ lang }: ProjectsProps) {
                 />
               ) : null}
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent px-3.5 pb-3.5 pt-12 sm:p-4 sm:pt-16 md:p-5">
-                <h3 className="truncate text-[15px] font-semibold tracking-tight text-white sm:text-lg md:text-xl">
+                <h3 className="line-clamp-2 text-[15px] font-semibold leading-snug tracking-tight text-white sm:text-lg md:text-xl">
                   {active.title}
                 </h3>
-                <p className="mt-0.5 truncate text-[10px] text-white/65 sm:text-xs">
+                <p className="mt-0.5 line-clamp-1 text-[10px] text-white/65 sm:text-xs">
                   {active.category} · {active.year}
                   {active.video ? " · motion" : ""}
                 </p>

@@ -122,10 +122,10 @@ const Navbar = memo(function Navbar({ lang }: NavbarProps) {
           href="/"
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
-          className="flex min-w-0 items-center truncate font-mono text-[10px] font-bold tracking-wider text-[var(--text-muted)] transition hover:text-[var(--text)] sm:text-xs"
+          className="flex min-w-0 shrink items-center font-mono text-[10px] font-bold tracking-wider text-[var(--text-muted)] transition hover:text-[var(--text)] sm:text-xs"
           aria-label="Home"
         >
-          $ {displayText}
+          <span className="whitespace-nowrap">$ {displayText}</span>
         </Link>
 
         <div className="flex items-center gap-0.5 sm:gap-1">

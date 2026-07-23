@@ -13,7 +13,8 @@ const ease = [0.22, 1, 0.36, 1] as const;
 
 const Hero = memo(function Hero({ lang }: HeroProps) {
   const { content } = useContent();
-  const name = lang === "RU" ? "Даниил Баутин" : "Daniil Bautin";
+  const firstName = lang === "RU" ? "Даниил" : "Daniil";
+  const lastName = lang === "RU" ? "Баутин" : "Bautin";
   const reduceMotion = useReducedMotion();
 
   const enter = (delay: number, y = 18) =>
@@ -52,7 +53,7 @@ const Hero = memo(function Hero({ lang }: HeroProps) {
         style={{ paddingLeft: "var(--page-x)", paddingRight: "var(--page-x)" }}
       >
         <div className="mx-auto w-full max-w-5xl 2xl:max-w-6xl">
-          <div className="max-w-2xl">
+          <div className="max-w-3xl">
             <motion.p
               {...enter(0.08, 10)}
               className="mb-4 font-mono text-[10px] tracking-[0.26em] text-[var(--text-faint)] sm:mb-5 sm:text-[11px] md:tracking-[0.32em]"
@@ -62,14 +63,15 @@ const Hero = memo(function Hero({ lang }: HeroProps) {
 
             <motion.h1
               {...enter(0.18, 26)}
-              className="max-w-[12ch] bg-gradient-to-br from-white via-[var(--text)] to-[var(--text-muted)] bg-clip-text text-[clamp(2.85rem,11vw,5.25rem)] font-semibold leading-[0.9] tracking-[-0.035em] text-transparent sm:text-[clamp(3.35rem,9vw,5.25rem)]"
+              className="bg-gradient-to-br from-white via-[var(--text)] to-[var(--text-muted)] bg-clip-text text-[clamp(2.6rem,10vw,5.25rem)] font-semibold leading-[1.05] tracking-[-0.035em] text-transparent sm:text-[clamp(3.1rem,8.5vw,5.25rem)]"
             >
-              {name}
+              <span className="block whitespace-nowrap">{firstName}</span>
+              <span className="block whitespace-nowrap">{lastName}</span>
             </motion.h1>
 
             <motion.p
               {...enter(0.32, 12)}
-              className="mt-4 text-[12px] tracking-wide text-[var(--text-muted)] sm:mt-5 sm:text-sm md:text-[15px]"
+              className="mt-4 max-w-xl text-[12px] leading-snug tracking-wide text-[var(--text-muted)] sm:mt-5 sm:text-sm sm:leading-relaxed md:text-[15px]"
             >
               {content.hero.text1 || "Motion · interface · visual systems"}
             </motion.p>
