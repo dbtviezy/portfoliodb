@@ -25,9 +25,17 @@ import { ImageFrameEditor } from "@/components/admin/ImageFrameEditor";
 import { VideosEditor } from "@/components/admin/VideosEditor";
 import { VideoFrameCover } from "@/components/admin/VideoFrameCover";
 import { ProjectCardImageDrop } from "@/components/admin/ProjectCardImageDrop";
+import { StudioToast, type StudioToastState } from "@/components/admin/StudioToast";
 import { resolveProjectGallery, syncCoverFromGallery } from "@/lib/project-images";
 import { resolveProjectVideos, syncPrimaryFromVideos } from "@/lib/project-videos";
 import { DEFAULT_IMAGE_FRAME, parseImageFrame } from "@/lib/image-frame";
+import { bustPublicContentCache } from "@/lib/content-cache";
+import {
+  patchStudioContent,
+  patchStudioProjects,
+  readStudioCache,
+  writeStudioCache,
+} from "@/lib/studio-cache";
 
 type AdminLang = "en" | "ru";
 
@@ -90,7 +98,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
+  const [toast, setToast] = useState<StudioToastState>(null);
   const [email, setEmail] = useState("");
   const [editingProject, setEditingProject] = useState<ProjectItem | null>(null);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
@@ -100,8 +108,22 @@ export default function AdminDashboard() {
 
   const currentProject = editingProject;
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  const showToast = useCallback((type: "ok" | "err", text: string) => {
+    setToast({ type, text });
+  }, []);
+
+  const dismissToast = useCallback(() => setToast(null), []);
+
+  const loadData = useCallback(async (opts?: { soft?: boolean }) => {
+    const soft = opts?.soft !== false;
+    const cached = readStudioCache(lang);
+    if (cached) {
+      setContent(cached.content);
+      setProjects(cached.projects);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     setLoadError("");
     try {
       const [meRes, portfolioRes, projectsRes, dbRes] = await Promise.all([
@@ -112,7 +134,6 @@ export default function AdminDashboard() {
       ]);
 
       if (!meRes.ok) {
-        // Clear a stale/invalid cookie so middleware and login don't fight.
         await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
         router.replace("/studio");
         return;
@@ -128,28 +149,37 @@ export default function AdminDashboard() {
         setDbBanner("");
       }
 
+      let nextContent: PortfolioContent | null = null;
+      let nextProjects: ProjectItem[] | null = null;
+
       if (portfolioRes.ok) {
         const data = (await portfolioRes.json()) as PortfolioContent;
         const channels = resolveContactChannels(data.contact.channels, data.contact);
-        setContent({
+        nextContent = {
           ...data,
           contact: { ...data.contact, channels },
-        });
+        };
+        setContent(nextContent);
       } else {
         const err = (await portfolioRes.json().catch(() => ({}))) as { error?: string };
-        setContent(null);
+        if (!cached && !soft) setContent(null);
         setLoadError(err.error || `Portfolio load failed (${portfolioRes.status})`);
       }
 
       if (projectsRes.ok) {
         const rows = await projectsRes.json();
-        setProjects((rows as Record<string, unknown>[]).map(normalizeAdminProject));
+        nextProjects = (rows as Record<string, unknown>[]).map(normalizeAdminProject);
+        setProjects(nextProjects);
       } else if (portfolioRes.ok) {
         const err = (await projectsRes.json().catch(() => ({}))) as { error?: string };
         setLoadError(err.error || `Projects load failed (${projectsRes.status})`);
       }
+
+      if (nextContent && nextProjects) {
+        writeStudioCache(lang, nextContent, nextProjects);
+      }
     } catch (error) {
-      setContent(null);
+      if (!cached) setContent(null);
       setLoadError(error instanceof Error ? error.message : "Failed to load studio");
     } finally {
       setLoading(false);
@@ -157,8 +187,14 @@ export default function AdminDashboard() {
   }, [lang, router]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    const cached = readStudioCache(lang);
+    if (cached) {
+      setContent(cached.content);
+      setProjects(cached.projects);
+      setLoading(false);
+    }
+    void loadData({ soft: true });
+  }, [loadData, lang]);
 
   const closeProjectEditor = useCallback(() => {
     setEditingProject(null);
@@ -185,7 +221,6 @@ export default function AdminDashboard() {
   async function savePortfolio(): Promise<boolean> {
     if (!content) return false;
     setSaving(true);
-    setMessage("");
 
     const channels = resolveContactChannels(content.contact.channels, content.contact);
     const legacy = legacyFieldsFromChannels(channels, content.contact);
@@ -239,19 +274,22 @@ export default function AdminDashboard() {
 
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
-        setMessage(data.error ?? "Не удалось сохранить");
+        showToast("err", data.error ?? "Не удалось сохранить");
         return false;
       }
       const saved = (await response.json()) as PortfolioContent;
       const savedChannels = resolveContactChannels(saved.contact.channels, saved.contact);
-      setContent({
+      const next = {
         ...saved,
         contact: { ...saved.contact, channels: savedChannels },
-      });
-      setMessage("Сохранено — сайт читает эти данные из базы");
+      };
+      setContent(next);
+      patchStudioContent(lang, next);
+      bustPublicContentCache();
+      showToast("ok", "Сохранено — сразу на сайте");
       return true;
     } catch {
-      setMessage("Не удалось сохранить");
+      showToast("err", "Не удалось сохранить");
       return false;
     } finally {
       setSaving(false);
@@ -272,7 +310,6 @@ export default function AdminDashboard() {
 
   async function saveProject(project: ProjectItem): Promise<boolean> {
     setSaving(true);
-    setMessage("");
 
     try {
       const isNew = !project.id;
@@ -287,16 +324,26 @@ export default function AdminDashboard() {
 
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
-        setMessage(data.error ?? "Не удалось сохранить проект");
+        showToast("err", data.error ?? "Не удалось сохранить проект");
         return false;
       }
+      const saved = normalizeAdminProject(
+        (await response.json()) as Record<string, unknown>
+      );
+      setProjects((rows) => {
+        const next = isNew
+          ? [...rows, saved]
+          : rows.map((row) => (row.id === saved.id ? saved : row));
+        patchStudioProjects(lang, next);
+        return next;
+      });
       setEditingProject(null);
       setIsCreatingProject(false);
-      await loadData();
-      setMessage(isNew ? "Проект создан" : "Проект обновлён — сразу на сайте");
+      bustPublicContentCache();
+      showToast("ok", isNew ? "Проект создан" : "Проект обновлён — сразу на сайте");
       return true;
     } catch {
-      setMessage("Не удалось сохранить проект");
+      showToast("err", "Не удалось сохранить проект");
       return false;
     } finally {
       setSaving(false);
@@ -305,7 +352,6 @@ export default function AdminDashboard() {
 
   async function translateCloud(scope: "portfolio" | "project" | "projects", projectId?: number) {
     setTranslating(true);
-    setMessage("");
     try {
       if (scope === "portfolio") {
         const saved = await savePortfolio();
@@ -323,7 +369,7 @@ export default function AdminDashboard() {
         );
         if (!response.ok) {
           const data = (await response.json().catch(() => ({}))) as { error?: string };
-          setMessage(data.error ?? "Сначала сохрани проект");
+          showToast("err", data.error ?? "Сначала сохрани проект");
           return;
         }
         const saved = normalizeAdminProject(
@@ -332,6 +378,14 @@ export default function AdminDashboard() {
         projectId = saved.id;
         setEditingProject(saved);
         setIsCreatingProject(false);
+        setProjects((rows) => {
+          const exists = rows.some((row) => row.id === saved.id);
+          const next = exists
+            ? rows.map((row) => (row.id === saved.id ? saved : row))
+            : [...rows, saved];
+          patchStudioProjects(lang, next);
+          return next;
+        });
       }
 
       const response = await fetch("/api/admin/translate", {
@@ -344,13 +398,14 @@ export default function AdminDashboard() {
         message?: string;
       };
       if (!response.ok) {
-        setMessage(data.error ?? "Не удалось перевести");
+        showToast("err", data.error ?? "Не удалось перевести");
         return;
       }
-      await loadData();
-      setMessage(data.message ?? "Автоперевод RU↔EN сохранён в облаке");
+      await loadData({ soft: true });
+      bustPublicContentCache();
+      showToast("ok", data.message ?? "Автоперевод RU↔EN сохранён в облаке");
     } catch {
-      setMessage("Не удалось перевести");
+      showToast("err", "Не удалось перевести");
     } finally {
       setTranslating(false);
     }
@@ -360,7 +415,6 @@ export default function AdminDashboard() {
   async function updateProjectImage(project: ProjectItem, imageUrl: string) {
     if (!project.id) return;
     setSaving(true);
-    setMessage("");
     try {
       const rest = (project.images ?? []).filter((url) => url && url !== project.image);
       const media = syncCoverFromGallery([imageUrl, ...rest]);
@@ -371,17 +425,20 @@ export default function AdminDashboard() {
       });
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
-        setMessage(data.error ?? "Не удалось обновить фото");
+        showToast("err", data.error ?? "Не удалось обновить фото");
         return;
       }
-      setProjects((rows) =>
-        rows.map((row) =>
+      setProjects((rows) => {
+        const next = rows.map((row) =>
           row.id === project.id ? { ...row, image: media.image, images: media.images } : row
-        )
-      );
-      setMessage("Фото проекта обновлено");
+        );
+        patchStudioProjects(lang, next);
+        return next;
+      });
+      bustPublicContentCache();
+      showToast("ok", "Фото проекта обновлено");
     } catch {
-      setMessage("Не удалось обновить фото");
+      showToast("err", "Не удалось обновить фото");
     } finally {
       setSaving(false);
     }
@@ -389,6 +446,7 @@ export default function AdminDashboard() {
 
   async function persistProjectOrder(next: ProjectItem[]) {
     setProjects(next);
+    patchStudioProjects(lang, next);
     const orderedIds = next.map((p) => p.id).filter((id): id is number => typeof id === "number");
     if (orderedIds.length === 0) return;
     setSaving(true);
@@ -400,16 +458,19 @@ export default function AdminDashboard() {
       });
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
-        setMessage(data.error ?? "Не удалось сохранить порядок");
-        await loadData();
+        showToast("err", data.error ?? "Не удалось сохранить порядок");
+        await loadData({ soft: true });
         return;
       }
       const rows = await response.json();
-      setProjects((rows as Record<string, unknown>[]).map(normalizeAdminProject));
-      setMessage("Порядок обновлён");
+      const normalized = (rows as Record<string, unknown>[]).map(normalizeAdminProject);
+      setProjects(normalized);
+      patchStudioProjects(lang, normalized);
+      bustPublicContentCache();
+      showToast("ok", "Порядок обновлён");
     } catch {
-      setMessage("Не удалось сохранить порядок");
-      await loadData();
+      showToast("err", "Не удалось сохранить порядок");
+      await loadData({ soft: true });
     } finally {
       setSaving(false);
     }
@@ -430,19 +491,24 @@ export default function AdminDashboard() {
       const response = await fetch(`/api/admin/projects/${id}`, { method: "DELETE" });
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
-        setMessage(data.error ?? "Не удалось удалить проект");
+        showToast("err", data.error ?? "Не удалось удалить проект");
         return;
       }
-      await loadData();
-      setMessage("Проект удалён");
+      setProjects((rows) => {
+        const next = rows.filter((row) => row.id !== id);
+        patchStudioProjects(lang, next);
+        return next;
+      });
+      bustPublicContentCache();
+      showToast("ok", "Проект удалён");
     } catch {
-      setMessage("Не удалось удалить проект");
+      showToast("err", "Не удалось удалить проект");
     } finally {
       setSaving(false);
     }
   }
 
-  if (loading) {
+  if (loading && !content) {
     return (
       <main className="flex min-h-screen items-center justify-center">
         <p className="text-sm text-[var(--text-faint)]">Loading studio...</p>
@@ -450,7 +516,7 @@ export default function AdminDashboard() {
     );
   }
 
-  if (!content || loadError) {
+  if (!content) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
         <p className="text-sm text-[var(--text-muted)]">Studio couldn&apos;t load content.</p>
@@ -461,7 +527,7 @@ export default function AdminDashboard() {
         ) : null}
         <button
           type="button"
-          onClick={() => void loadData()}
+          onClick={() => void loadData({ soft: false })}
           className="rounded-md border border-[var(--border)] px-4 py-2 text-sm text-[var(--text)] transition hover:bg-white/5"
         >
           Retry
@@ -868,17 +934,12 @@ export default function AdminDashboard() {
               >
                 {translating ? "Translating…" : "Save & auto RU↔EN"}
               </StudioButton>
-              {message && (
-                <span className="text-sm text-[var(--text-muted)]">{message}</span>
-              )}
             </div>
-          )}
-
-          {tab === "projects" && message && (
-            <p className="text-sm text-[var(--text-muted)]">{message}</p>
           )}
         </StudioPanel>
       </div>
+
+      <StudioToast toast={toast} onDismiss={dismissToast} />
 
       <AnimatePresence>
         {(isCreatingProject || editingProject) && currentProject && (

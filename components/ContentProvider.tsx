@@ -1,9 +1,23 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { PortfolioContent } from "@/lib/content";
 import { emptyPortfolioContent } from "@/lib/empty-content";
 import { isUsableProfileImage } from "@/lib/media";
+import {
+  consumeContentBustFlag,
+  hashContent,
+  readCachedContent,
+  writeCachedContent,
+} from "@/lib/content-cache";
 
 export type Lang = "RU" | "EN";
 
@@ -16,6 +30,8 @@ type ContentContextValue = {
   loading: boolean;
   /** False until the first content response (DB/API) is applied. */
   ready: boolean;
+  /** Soft refresh from network (uses cache when unchanged). */
+  refresh: () => void;
 };
 
 const ContentContext = createContext<ContentContextValue | null>(null);
@@ -31,6 +47,23 @@ function readStoredLang(fallback: Lang): Lang {
   return fallback;
 }
 
+function mergeProfileGuard(
+  previous: PortfolioContent | null,
+  next: PortfolioContent
+): PortfolioContent {
+  if (
+    previous &&
+    isUsableProfileImage(previous.about.profileImage) &&
+    !isUsableProfileImage(next.about.profileImage)
+  ) {
+    return {
+      ...next,
+      about: { ...next.about, profileImage: previous.about.profileImage },
+    };
+  }
+  return next;
+}
+
 export function ContentProvider({
   children,
   initialLang = "EN",
@@ -43,9 +76,19 @@ export function ContentProvider({
   const [loading, setLoading] = useState(true);
   const [ready, setReady] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [reloadTick, setReloadTick] = useState(0);
+  const hashRef = useRef<string>("");
 
   useEffect(() => {
-    setLangState(readStoredLang(initialLang));
+    const stored = readStoredLang(initialLang);
+    setLangState(stored);
+    const cached = readCachedContent(stored);
+    if (cached) {
+      setContent(cached.data);
+      hashRef.current = cached.hash;
+      setReady(true);
+      setLoading(false);
+    }
     setHydrated(true);
   }, [initialLang]);
 
@@ -59,14 +102,40 @@ export function ContentProvider({
     document.documentElement.lang = lang === "RU" ? "ru" : "en";
   }, [lang, hydrated]);
 
-  const setLang = (next: Lang) => setLangState(next);
+  const setLang = useCallback((next: Lang) => {
+    setLangState((prev) => {
+      if (next === prev) return prev;
+      const cached = readCachedContent(next);
+      if (cached) {
+        setContent(cached.data);
+        hashRef.current = cached.hash;
+        setReady(true);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
+      return next;
+    });
+  }, []);
+
+  const refresh = useCallback(() => {
+    setReloadTick((tick) => tick + 1);
+  }, []);
 
   useEffect(() => {
     if (!hydrated) return;
     let cancelled = false;
 
     async function loadContent() {
-      setLoading(true);
+      const cached = readCachedContent(lang);
+      if (cached) {
+        setContent((previous) => previous ?? cached.data);
+        if (!hashRef.current) hashRef.current = cached.hash;
+        setReady(true);
+      } else {
+        setLoading(true);
+      }
+
       try {
         const response = await fetch(`/api/content?lang=${lang.toLowerCase()}`, {
           cache: "no-store",
@@ -75,23 +144,23 @@ export function ContentProvider({
         const data = (await response.json()) as PortfolioContent;
         if (cancelled) return;
 
+        const nextHash = hashContent(data);
+        if (nextHash === hashRef.current) {
+          writeCachedContent(lang, data);
+          setReady(true);
+          setLoading(false);
+          return;
+        }
+
         setContent((previous) => {
-          if (
-            previous &&
-            isUsableProfileImage(previous.about.profileImage) &&
-            !isUsableProfileImage(data.about.profileImage)
-          ) {
-            return {
-              ...data,
-              about: { ...data.about, profileImage: previous.about.profileImage },
-            };
-          }
-          return data;
+          const merged = mergeProfileGuard(previous, data);
+          hashRef.current = hashContent(merged);
+          writeCachedContent(lang, merged);
+          return merged;
         });
         setReady(true);
       } catch {
         if (cancelled) return;
-        // Never fall back to locale Unsplash demos — keep previous cloud data or empty shell.
         setContent((previous) => previous ?? emptyPortfolioContent(lang));
         setReady(true);
       } finally {
@@ -99,11 +168,29 @@ export function ContentProvider({
       }
     }
 
-    loadContent();
+    void loadContent();
     return () => {
       cancelled = true;
     };
-  }, [lang, hydrated]);
+  }, [lang, hydrated, reloadTick]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+
+    const onFocus = () => {
+      if (consumeContentBustFlag()) refresh();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") onFocus();
+    };
+
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [hydrated, refresh]);
 
   const value = useMemo(
     () => ({
@@ -112,8 +199,9 @@ export function ContentProvider({
       content: content ?? emptyPortfolioContent(lang),
       loading,
       ready,
+      refresh,
     }),
-    [lang, content, loading, ready]
+    [lang, setLang, content, loading, ready, refresh]
   );
 
   return <ContentContext.Provider value={value}>{children}</ContentContext.Provider>;

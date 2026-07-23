@@ -24,7 +24,7 @@ type VideoTheaterProps = {
 const ease = [0.22, 1, 0.36, 1] as const;
 
 /**
- * Full-viewport cinema player for project videos (Rutube / YouTube / MP4).
+ * Bottom-sheet style player: large stage + side playlist on desktop.
  * Opens from a user click so sound autoplay is allowed.
  */
 export default function VideoTheater({
@@ -82,149 +82,188 @@ export default function VideoTheater({
     <AnimatePresence>
       {open && src ? (
         <motion.div
-          className="fixed inset-0 z-[150] flex flex-col bg-black/92 backdrop-blur-md"
+          className="fixed inset-0 z-[150] flex items-end justify-center sm:items-center sm:p-5"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.22 }}
+          transition={{ duration: 0.2 }}
         >
           <button
             type="button"
             aria-label="Close"
-            className="absolute inset-0"
+            className="absolute inset-0 bg-black/65 backdrop-blur-sm"
             onClick={onClose}
           />
 
-          <div className="relative z-10 flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-white/90">{title}</p>
-              <p className="mt-0.5 text-[11px] text-white/45">
-                {label}
-                {videos.length > 1 ? ` · ${safeIndex + 1} / ${videos.length}` : ""}
-              </p>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              {external ? (
-                <a
-                  href={external.sourceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(event) => event.stopPropagation()}
-                  className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-white/80 transition hover:bg-white/15 hover:text-white"
-                >
-                  {lang === "RU" ? "Открыть на сайте" : "Open source"}
-                </a>
-              ) : null}
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-white/80 transition hover:bg-white/15 hover:text-white"
-              >
-                {lang === "RU" ? "Закрыть" : "Close"}
-              </button>
-            </div>
-          </div>
-
-          <div className="relative z-10 flex min-h-0 flex-1 items-center justify-center px-2 pb-4 sm:px-6 sm:pb-6">
-            {videos.length > 1 ? (
-              <button
-                type="button"
-                aria-label="Previous video"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onIndexChange((safeIndex - 1 + videos.length) % videos.length);
-                }}
-                className="absolute left-2 z-20 rounded-full border border-white/15 bg-black/45 px-3 py-2 text-white/80 backdrop-blur transition hover:text-white sm:left-4"
-              >
-                ←
-              </button>
-            ) : null}
-
-            <motion.div
-              key={`${src}-${safeIndex}`}
-              initial={{ opacity: 0, scale: 0.985 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.28, ease }}
-              className="relative w-full max-w-[min(1120px,96vw)] overflow-hidden rounded-[1rem] border border-white/10 bg-black shadow-[0_30px_80px_rgba(0,0,0,0.55)]"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <div className="relative aspect-video w-full">
-                {external ? (
-                  <iframe
-                    key={buildEmbedPlaybackUrl(external, { autoplay: true, muted: false })}
-                    title={title}
-                    src={buildEmbedPlaybackUrl(external, { autoplay: true, muted: false })}
-                    className="absolute inset-0 h-full w-full border-0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-                    allowFullScreen
-                    referrerPolicy="strict-origin-when-cross-origin"
-                  />
-                ) : isFile ? (
-                  <video
-                    key={src}
-                    className="absolute inset-0 h-full w-full bg-black object-contain"
-                    src={src}
-                    poster={poster || undefined}
-                    controls
-                    autoPlay
-                    playsInline
-                    preload="auto"
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center px-6 text-sm text-white/55">
-                    {lang === "RU" ? "Не удалось открыть видео" : "Could not open video"}
-                  </div>
-                )}
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-label={title}
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 28 }}
+            transition={{ duration: 0.3, ease }}
+            className="relative z-10 flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-t-[1.35rem] border border-[var(--border)] bg-[var(--bg-panel)] shadow-[var(--shadow-panel)] sm:rounded-[1.25rem]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3 sm:px-5">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-[var(--text)]">{title}</p>
+                <p className="mt-0.5 text-[11px] text-[var(--text-faint)]">
+                  {label}
+                  {videos.length > 1 ? ` · ${safeIndex + 1} / ${videos.length}` : ""}
+                </p>
               </div>
-            </motion.div>
-
-            {videos.length > 1 ? (
-              <button
-                type="button"
-                aria-label="Next video"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onIndexChange((safeIndex + 1) % videos.length);
-                }}
-                className="absolute right-2 z-20 rounded-full border border-white/15 bg-black/45 px-3 py-2 text-white/80 backdrop-blur transition hover:text-white sm:right-4"
-              >
-                →
-              </button>
-            ) : null}
-          </div>
-
-          {videos.length > 1 ? (
-            <div className="relative z-10 flex justify-center gap-2 overflow-x-auto px-4 pb-4 sm:pb-5">
-              {videos.map((url, itemIndex) => {
-                const thumb = videoPosterUrl(url) || posterFallback;
-                const active = itemIndex === safeIndex;
-                return (
-                  <button
-                    key={`${url}-thumb-${itemIndex}`}
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onIndexChange(itemIndex);
-                    }}
-                    className={`relative h-14 w-24 shrink-0 overflow-hidden rounded-md border transition sm:h-16 sm:w-28 ${
-                      active
-                        ? "border-white/70 opacity-100"
-                        : "border-white/15 opacity-55 hover:opacity-90"
-                    }`}
+              <div className="flex shrink-0 items-center gap-2">
+                {external ? (
+                  <a
+                    href={external.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-[var(--radius-md)] border border-[var(--border)] px-2.5 py-1.5 text-xs text-[var(--text-muted)] transition hover:text-[var(--text)]"
                   >
-                    {thumb ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={thumb} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <span className="flex h-full w-full items-center justify-center bg-white/5 text-[10px] text-white/50">
-                        {itemIndex + 1}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+                    {lang === "RU" ? "На Rutube/YT" : "Source"}
+                  </a>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="rounded-[var(--radius-md)] border border-[var(--border)] px-2.5 py-1.5 text-xs text-[var(--text-muted)] transition hover:text-[var(--text)]"
+                >
+                  {lang === "RU" ? "Закрыть" : "Close"}
+                </button>
+              </div>
             </div>
-          ) : null}
+
+            <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_15rem]">
+              <div className="relative bg-black">
+                <div className="relative aspect-video w-full lg:aspect-auto lg:min-h-[min(68vh,640px)]">
+                  {external ? (
+                    <iframe
+                      key={buildEmbedPlaybackUrl(external, {
+                        autoplay: true,
+                        muted: false,
+                      })}
+                      title={title}
+                      src={buildEmbedPlaybackUrl(external, {
+                        autoplay: true,
+                        muted: false,
+                      })}
+                      className="absolute inset-0 h-full w-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                      allowFullScreen
+                      referrerPolicy="strict-origin-when-cross-origin"
+                    />
+                  ) : isFile ? (
+                    <video
+                      key={src}
+                      className="absolute inset-0 h-full w-full bg-black object-contain"
+                      src={src}
+                      poster={poster || undefined}
+                      controls
+                      autoPlay
+                      playsInline
+                      preload="metadata"
+                    />
+                  ) : (
+                    <div className="flex h-full min-h-[12rem] items-center justify-center px-6 text-sm text-white/55">
+                      {lang === "RU" ? "Не удалось открыть видео" : "Could not open video"}
+                    </div>
+                  )}
+                </div>
+
+                {videos.length > 1 ? (
+                  <div className="absolute inset-x-0 bottom-0 flex items-center justify-between p-3 lg:hidden">
+                    <button
+                      type="button"
+                      aria-label="Previous"
+                      onClick={() =>
+                        onIndexChange((safeIndex - 1 + videos.length) % videos.length)
+                      }
+                      className="rounded-full border border-white/20 bg-black/50 px-3 py-1.5 text-sm text-white/85 backdrop-blur"
+                    >
+                      ←
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Next"
+                      onClick={() => onIndexChange((safeIndex + 1) % videos.length)}
+                      className="rounded-full border border-white/20 bg-black/50 px-3 py-1.5 text-sm text-white/85 backdrop-blur"
+                    >
+                      →
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+
+              {videos.length > 1 ? (
+                <aside className="max-h-[30vh] overflow-y-auto border-t border-[var(--border)] bg-[var(--bg-soft)] p-3 lg:max-h-none lg:border-l lg:border-t-0">
+                  <p className="mb-2 px-1 text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--text-faint)]">
+                    {lang === "RU" ? "Плейлист" : "Playlist"}
+                  </p>
+                  <ul className="space-y-2">
+                    {videos.map((url, itemIndex) => {
+                      const thumb = videoPosterUrl(url) || posterFallback;
+                      const parsed = parseExternalVideo(url);
+                      const itemLabel = parsed
+                        ? providerLabel(parsed.provider)
+                        : lang === "RU"
+                          ? "Файл"
+                          : "File";
+                      const active = itemIndex === safeIndex;
+                      return (
+                        <li key={`${url}-pl-${itemIndex}`}>
+                          <button
+                            type="button"
+                            onClick={() => onIndexChange(itemIndex)}
+                            className={`flex w-full items-center gap-2.5 rounded-[var(--radius-md)] border p-2 text-left transition ${
+                              active
+                                ? "border-[var(--border-strong)] bg-[var(--bg-elevated)]"
+                                : "border-transparent hover:border-[var(--border)] hover:bg-[var(--bg)]"
+                            }`}
+                          >
+                            <span className="relative h-12 w-[4.5rem] shrink-0 overflow-hidden rounded-[var(--radius-sm)] bg-black/30">
+                              {thumb ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={thumb}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <span className="flex h-full w-full items-center justify-center text-[10px] text-[var(--text-faint)]">
+                                  {itemIndex + 1}
+                                </span>
+                              )}
+                              {active ? (
+                                <span className="absolute inset-0 flex items-center justify-center bg-black/35 text-[10px] text-white">
+                                  ▶
+                                </span>
+                              ) : null}
+                            </span>
+                            <span className="min-w-0">
+                              <span className="block truncate text-xs font-medium text-[var(--text)]">
+                                {itemIndex + 1}. {itemLabel}
+                              </span>
+                              <span className="block text-[10px] text-[var(--text-faint)]">
+                                {active
+                                  ? lang === "RU"
+                                    ? "Сейчас"
+                                    : "Now playing"
+                                  : lang === "RU"
+                                    ? "Смотреть"
+                                    : "Play"}
+                              </span>
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </aside>
+              ) : null}
+            </div>
+          </motion.div>
         </motion.div>
       ) : null}
     </AnimatePresence>
