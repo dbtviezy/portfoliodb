@@ -13,8 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "db.tviezy | Motion Designer Portfolio",
-  description: "Creating high-end motion graphics and interactive experiences.",
+  title: "Portfolio db.tviezy",
+  description:
+    "Portfolio of Daniil Bautin (db.tviezy) — motion design, interfaces, and visual systems.",
 };
 
 export default function RootLayout({
