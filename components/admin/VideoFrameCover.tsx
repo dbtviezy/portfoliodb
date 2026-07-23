@@ -79,10 +79,11 @@ function ExternalCoverPanel({
       }`}
     >
       <div>
-        <StudioLabel>Обложка из {label}</StudioLabel>
+        <StudioLabel>Превью → обложка (фото)</StudioLabel>
         <p className="mt-1 text-xs text-[var(--text-faint)]">
-          Ссылку {label} нельзя прокрутить как файл — берём официальное превью
-          видео и ставим его на обложку.
+          Обложка на сайте — всегда фото, не плеер {label}. Можно взять
+          официальное превью ролика и сохранить его как обычную картинку, либо
+          загрузить своё фото в Photos выше.
         </p>
       </div>
 
@@ -106,10 +107,10 @@ function ExternalCoverPanel({
         className="rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--bg-elevated)] px-3 py-2 text-sm text-[var(--text)] transition hover:border-[var(--accent)] disabled:opacity-50"
       >
         {busy
-          ? "Загрузка превью…"
+          ? "Сохраняю превью…"
           : hasCover
-            ? `Заменить обложку превью ${label}`
-            : `Поставить превью ${label} на обложку`}
+            ? "Заменить обложку этим превью"
+            : "Поставить превью на обложку"}
       </button>
 
       {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}

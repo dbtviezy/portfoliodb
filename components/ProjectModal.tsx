@@ -6,7 +6,7 @@ import type { ProjectItem } from "@/lib/content";
 import { normalizeExternalUrl } from "@/lib/project-links";
 import { resolveProjectGallery } from "@/lib/project-images";
 import { resolveProjectVideos } from "@/lib/project-videos";
-import { parseExternalVideo, providerLabel } from "@/lib/external-video";
+import { parseExternalVideo, providerLabel, isDirectVideoFileUrl } from "@/lib/external-video";
 import PhotoLightbox from "@/components/PhotoLightbox";
 import FramedImage from "@/components/FramedImage";
 import { ProjectVideo } from "@/components/ProjectVideo";
@@ -69,7 +69,14 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
   const primaryVideo = videos[0] || "";
   const completed = project?.completed !== false;
   const activeImage = gallery[activeIndex] || project?.image || "";
-  const showVideo = Boolean(primaryVideo && activeIndex === 0 && !lightboxOpen);
+  // Cover is always a still photo. Rutube/YouTube play in the Videos block below —
+  // never replace the hero with an embed. Short uploaded MP4 can still loop on cover.
+  const showFileLoopOnCover = Boolean(
+    primaryVideo &&
+      isDirectVideoFileUrl(primaryVideo) &&
+      activeIndex === 0 &&
+      !lightboxOpen
+  );
 
   return (
     <AnimatePresence>
@@ -99,7 +106,7 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
             className="relative z-10 flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-[1.25rem] border border-[var(--border)] bg-[var(--bg-panel)] shadow-[var(--shadow-panel)] sm:rounded-[var(--radius-xl)]"
           >
             <div className="relative aspect-[16/10] shrink-0 overflow-hidden bg-[var(--bg-soft)] sm:aspect-[16/9]">
-              {showVideo ? (
+              {showFileLoopOnCover ? (
                 <ProjectVideo
                   className="h-full w-full object-cover"
                   src={primaryVideo}
@@ -157,7 +164,7 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
                 </>
               ) : null}
 
-              {showVideo && activeImage ? (
+              {showFileLoopOnCover && activeImage ? (
                 <button
                   type="button"
                   onClick={() => setLightboxOpen(true)}
@@ -232,36 +239,38 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
                 </div>
               ) : null}
 
-              {videos.length > 1 ? (
+              {videos.length > 0 ? (
                 <div className="mb-6">
                   <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--text-faint)]">
                     {lang === "RU" ? "Видео" : "Videos"}
                   </p>
-                  <div className="mb-3 flex flex-wrap gap-2">
-                    {videos.map((url, index) => {
-                      const parsed = parseExternalVideo(url);
-                      const label = parsed
-                        ? `${providerLabel(parsed.provider)} ${index + 1}`
-                        : lang === "RU"
-                          ? `Видео ${index + 1}`
-                          : `Video ${index + 1}`;
-                      const active = index === activeVideoIndex;
-                      return (
-                        <button
-                          key={`${url}-${index}`}
-                          type="button"
-                          onClick={() => setActiveVideoIndex(index)}
-                          className={`rounded-[var(--radius-md)] border px-3 py-1.5 text-xs transition ${
-                            active
-                              ? "border-[var(--border-strong)] bg-[var(--bg-elevated)] text-[var(--text)]"
-                              : "border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)]"
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {videos.length > 1 ? (
+                    <div className="mb-3 flex flex-wrap gap-2">
+                      {videos.map((url, index) => {
+                        const parsed = parseExternalVideo(url);
+                        const label = parsed
+                          ? `${providerLabel(parsed.provider)} ${index + 1}`
+                          : lang === "RU"
+                            ? `Видео ${index + 1}`
+                            : `Video ${index + 1}`;
+                        const active = index === activeVideoIndex;
+                        return (
+                          <button
+                            key={`${url}-${index}`}
+                            type="button"
+                            onClick={() => setActiveVideoIndex(index)}
+                            className={`rounded-[var(--radius-md)] border px-3 py-1.5 text-xs transition ${
+                              active
+                                ? "border-[var(--border-strong)] bg-[var(--bg-elevated)] text-[var(--text)]"
+                                : "border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)]"
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
                   <div className="aspect-video overflow-hidden rounded-[var(--radius-md)] border border-[var(--border)] bg-black/40">
                     <ProjectVideo
                       className="h-full w-full"

@@ -109,7 +109,8 @@ export function VideosEditor({
         <StudioLabel>Videos</StudioLabel>
         <p className="mt-1 text-xs text-[var(--text-faint)]">
           Можно несколько ссылок Rutube / YouTube / Vimeo или коротких MP4.
-          Первое — основное (карточка / обложка в модалке).
+          Первое — основное. На обложке карточки всегда фото (не плеер) —
+          превью можно скопировать кнопкой ниже или загрузить своё в Photos.
         </p>
       </div>
 
