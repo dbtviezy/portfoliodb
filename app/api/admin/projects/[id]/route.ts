@@ -102,28 +102,8 @@ export async function PUT(request: Request, context: RouteContext) {
       data: cleaned,
     });
 
-    // Keep matching-order project on the other language in sync for media + status.
-    const mediaPatch: {
-      image?: string;
-      images?: string;
-      imageFrame?: string;
-      video?: string;
-      completed?: boolean;
-    } = {};
-    if (media) {
-      mediaPatch.image = media.image;
-      mediaPatch.images = serializeProjectImages(media.images);
-    }
-    if (frameJson) mediaPatch.imageFrame = frameJson;
-    if (typeof body.video === "string") mediaPatch.video = body.video;
-    if (typeof body.completed === "boolean") mediaPatch.completed = body.completed;
-    if (Object.keys(mediaPatch).length > 0) {
-      const otherLang = project.lang === "en" ? "ru" : "en";
-      await prisma.project.updateMany({
-        where: { lang: otherLang, order: project.order },
-        data: mediaPatch,
-      });
-    }
+    const { upsertProjectSibling } = await import("@/lib/project-sync");
+    await upsertProjectSibling(project.id);
 
     const gallery = resolveProjectGallery(project.image, project.images);
     return NextResponse.json({
@@ -156,6 +136,13 @@ export async function DELETE(_request: Request, context: RouteContext) {
   }
 
   try {
+    const existing = await prisma.project.findUnique({ where: { id: projectId } });
+    if (existing) {
+      const otherLang = existing.lang === "en" ? "ru" : "en";
+      await prisma.project.deleteMany({
+        where: { lang: otherLang, order: existing.order },
+      });
+    }
     await prisma.project.delete({ where: { id: projectId } });
     return NextResponse.json({ ok: true });
   } catch (error) {

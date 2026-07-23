@@ -136,17 +136,8 @@ export async function POST(request: Request) {
       },
     });
 
-    const otherLang = lang === "en" ? "ru" : "en";
-    await prisma.project.updateMany({
-      where: { lang: otherLang, order: project.order },
-      data: {
-        image: media.image,
-        images: serializeProjectImages(media.images),
-        imageFrame: frameJson,
-        ...(body.video?.trim() ? { video: body.video } : {}),
-        completed: body.completed !== false,
-      },
-    });
+    const { upsertProjectSibling } = await import("@/lib/project-sync");
+    await upsertProjectSibling(project.id);
 
     return NextResponse.json(
       {

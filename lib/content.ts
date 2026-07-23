@@ -92,12 +92,18 @@ export async function getPortfolioContent(langInput: LangCode | "RU" | "EN"): Pr
 
   const { ensureSchemaUpgrades } = await import("@/lib/ensure-schema");
   const { ensureBlankPortfolioRows } = await import("@/lib/ensure-seed");
+  const { ensureProjectLanguageMirrors } = await import("@/lib/project-sync");
   const { emptyPortfolioContent } = await import("@/lib/empty-content");
   await ensureSchemaUpgrades();
   await ensureBlankPortfolioRows();
+  // Make sure EN/RU both have project rows so language switch never blanks the gallery.
+  await ensureProjectLanguageMirrors();
 
-  const [portfolio, skills, expertise, projects] = await Promise.all([
+  const other = lang === "en" ? "ru" : "en";
+
+  const [portfolio, otherPortfolio, skills, expertise, projects] = await Promise.all([
     prisma.portfolio.findFirst({ where: { lang } }),
+    prisma.portfolio.findFirst({ where: { lang: other } }),
     prisma.skill.findMany({ where: { lang }, orderBy: { order: "asc" } }),
     prisma.expertiseItem.findMany({ where: { lang }, orderBy: { order: "asc" } }),
     prisma.project.findMany({ where: { lang }, orderBy: { order: "asc" } }),
@@ -107,17 +113,16 @@ export async function getPortfolioContent(langInput: LangCode | "RU" | "EN"): Pr
     return emptyPortfolioContent(lang);
   }
 
+  const pickText = (value: string | null | undefined, fallback: string | null | undefined) => {
+    if ((value ?? "").trim()) return value ?? "";
+    return fallback ?? "";
+  };
+
   const { isUsableProfileImage } = await import("@/lib/media");
   let profileImage = portfolio.profileImage ?? "";
   if (!isUsableProfileImage(profileImage)) {
-    const otherLang = lang === "en" ? "ru" : "en";
-    const other = await prisma.portfolio.findFirst({
-      where: { lang: otherLang },
-      select: { profileImage: true },
-    });
-    if (isUsableProfileImage(other?.profileImage)) {
-      profileImage = other!.profileImage;
-      // Heal stock/empty row so the next language switch stays consistent.
+    if (isUsableProfileImage(otherPortfolio?.profileImage)) {
+      profileImage = otherPortfolio!.profileImage;
       await prisma.portfolio.update({
         where: { id: portfolio.id },
         data: { profileImage },
@@ -127,7 +132,15 @@ export async function getPortfolioContent(langInput: LangCode | "RU" | "EN"): Pr
     }
   }
 
-  const allItems = projects.map(
+  let projectRows = projects;
+  if (projectRows.length === 0) {
+    projectRows = await prisma.project.findMany({
+      where: { lang: other },
+      orderBy: { order: "asc" },
+    });
+  }
+
+  const allItems = projectRows.map(
     ({
       id,
       title,
@@ -166,61 +179,99 @@ export async function getPortfolioContent(langInput: LangCode | "RU" | "EN"): Pr
 
   const featured = allItems.filter((project) => project.featured);
 
+  let skillItems = skills.map((skill) => skill.name);
+  if (skillItems.length === 0) {
+    skillItems = (
+      await prisma.skill.findMany({ where: { lang: other }, orderBy: { order: "asc" } })
+    ).map((skill) => skill.name);
+  }
+
+  let expertiseItems = expertise.map((item) => item.name);
+  if (expertiseItems.length === 0) {
+    expertiseItems = (
+      await prisma.expertiseItem.findMany({
+        where: { lang: other },
+        orderBy: { order: "asc" },
+      })
+    ).map((item) => item.name);
+  }
+
+  const legacy = {
+    email: portfolio.contactEmail,
+    telegram: portfolio.contactTelegram,
+    behance: portfolio.contactBehance,
+    dribbble: portfolio.contactDribbble,
+    instagram: portfolio.contactInstagram ?? "",
+  };
+  let channels = resolveContactChannels(portfolio.contactChannels, legacy);
+  if (channels.length === 0 && otherPortfolio) {
+    channels = resolveContactChannels(otherPortfolio.contactChannels, {
+      email: otherPortfolio.contactEmail,
+      telegram: otherPortfolio.contactTelegram,
+      behance: otherPortfolio.contactBehance,
+      dribbble: otherPortfolio.contactDribbble,
+      instagram: otherPortfolio.contactInstagram ?? "",
+    });
+  }
+
   return {
     navbar: {
-      projects: portfolio.navbarProjects,
-      contact: portfolio.navbarContact,
+      projects: pickText(portfolio.navbarProjects, otherPortfolio?.navbarProjects),
+      contact: pickText(portfolio.navbarContact, otherPortfolio?.navbarContact),
     },
     hero: {
-      location: portfolio.heroLocation,
-      text1: portfolio.heroText1,
-      text2: portfolio.heroText2,
-      desc: portfolio.heroDesc,
-      btn: portfolio.heroBtn,
+      location: pickText(portfolio.heroLocation, otherPortfolio?.heroLocation),
+      text1: pickText(portfolio.heroText1, otherPortfolio?.heroText1),
+      text2: pickText(portfolio.heroText2, otherPortfolio?.heroText2),
+      desc: pickText(portfolio.heroDesc, otherPortfolio?.heroDesc),
+      btn: pickText(portfolio.heroBtn, otherPortfolio?.heroBtn),
     },
     about: {
-      title: portfolio.aboutTitle,
+      title: pickText(portfolio.aboutTitle, otherPortfolio?.aboutTitle),
       profileImage,
-      desc1: portfolio.aboutDesc1,
-      desc2: portfolio.aboutDesc2,
-      expertise: portfolio.aboutExpertise,
-      expertiseItems: expertise.map((item) => item.name),
+      desc1: pickText(portfolio.aboutDesc1, otherPortfolio?.aboutDesc1),
+      desc2: pickText(portfolio.aboutDesc2, otherPortfolio?.aboutDesc2),
+      expertise: pickText(portfolio.aboutExpertise, otherPortfolio?.aboutExpertise),
+      expertiseItems,
       stats: [
-        { value: portfolio.aboutStats1Value, label: portfolio.aboutStats1Label },
-        { value: portfolio.aboutStats2Value, label: portfolio.aboutStats2Label },
-        { value: portfolio.aboutStats3Value, label: portfolio.aboutStats3Label },
+        {
+          value: pickText(portfolio.aboutStats1Value, otherPortfolio?.aboutStats1Value),
+          label: pickText(portfolio.aboutStats1Label, otherPortfolio?.aboutStats1Label),
+        },
+        {
+          value: pickText(portfolio.aboutStats2Value, otherPortfolio?.aboutStats2Value),
+          label: pickText(portfolio.aboutStats2Label, otherPortfolio?.aboutStats2Label),
+        },
+        {
+          value: pickText(portfolio.aboutStats3Value, otherPortfolio?.aboutStats3Value),
+          label: pickText(portfolio.aboutStats3Label, otherPortfolio?.aboutStats3Label),
+        },
       ],
     },
     projects: {
-      title: portfolio.projectsTitle,
-      showing: portfolio.projectsShowing,
-      of: portfolio.projectsOf,
-      viewAll: portfolio.projectsViewAll,
-      allTitle: portfolio.projectsAllTitle,
+      title: pickText(portfolio.projectsTitle, otherPortfolio?.projectsTitle),
+      showing: pickText(portfolio.projectsShowing, otherPortfolio?.projectsShowing),
+      of: pickText(portfolio.projectsOf, otherPortfolio?.projectsOf),
+      viewAll: pickText(portfolio.projectsViewAll, otherPortfolio?.projectsViewAll),
+      allTitle: pickText(portfolio.projectsAllTitle, otherPortfolio?.projectsAllTitle),
       featured,
       allItems,
     },
     skills: {
-      title: portfolio.skillsTitle,
-      items: skills.map((skill) => skill.name),
+      title: pickText(portfolio.skillsTitle, otherPortfolio?.skillsTitle),
+      items: skillItems,
     },
     contact: {
-      subtitle: portfolio.contactSubtitle,
-      title1: portfolio.contactTitle1,
-      title2: portfolio.contactTitle2,
-      button: portfolio.contactBtn,
-      channels: resolveContactChannels(portfolio.contactChannels, {
-        email: portfolio.contactEmail,
-        telegram: portfolio.contactTelegram,
-        behance: portfolio.contactBehance,
-        dribbble: portfolio.contactDribbble,
-        instagram: portfolio.contactInstagram ?? "",
-      }),
-      email: portfolio.contactEmail,
-      telegram: portfolio.contactTelegram,
-      behance: portfolio.contactBehance,
-      dribbble: portfolio.contactDribbble,
-      instagram: portfolio.contactInstagram ?? "",
+      subtitle: pickText(portfolio.contactSubtitle, otherPortfolio?.contactSubtitle),
+      title1: pickText(portfolio.contactTitle1, otherPortfolio?.contactTitle1),
+      title2: pickText(portfolio.contactTitle2, otherPortfolio?.contactTitle2),
+      button: pickText(portfolio.contactBtn, otherPortfolio?.contactBtn),
+      channels,
+      email: pickText(portfolio.contactEmail, otherPortfolio?.contactEmail),
+      telegram: pickText(portfolio.contactTelegram, otherPortfolio?.contactTelegram),
+      behance: pickText(portfolio.contactBehance, otherPortfolio?.contactBehance),
+      dribbble: pickText(portfolio.contactDribbble, otherPortfolio?.contactDribbble),
+      instagram: pickText(portfolio.contactInstagram, otherPortfolio?.contactInstagram),
     },
   };
 }
