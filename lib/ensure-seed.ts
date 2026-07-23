@@ -94,12 +94,14 @@ async function seedLanguage(lang: "en" | "ru", data: LocaleData) {
       description: project.description,
       detail: project.description,
       image: project.image,
+      images: JSON.stringify(project.image ? [project.image] : []),
       video: "",
       links: JSON.stringify([
         { label: "Behance", url: "https://behance.net/3606019f" },
         { label: "Dribbble", url: "https://dribbble.com/dbtviezy" },
       ]),
       featured: data.projects.featured.some((item) => item.title === project.title),
+      completed: true,
       order,
     })),
   });

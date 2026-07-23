@@ -213,6 +213,12 @@ const Projects = memo(function Projects({ lang }: ProjectsProps) {
                 </h3>
                 <p className="mt-0.5 line-clamp-1 text-[10px] text-white/65 sm:text-xs">
                   {active.category} · {active.year}
+                  {active.completed === false
+                    ? lang === "RU"
+                      ? " · в работе"
+                      : " · in progress"
+                    : ""}
+                  {(active.images?.length ?? 0) > 1 ? ` · ${active.images!.length}` : ""}
                   {active.video ? " · motion" : ""}
                 </p>
               </div>

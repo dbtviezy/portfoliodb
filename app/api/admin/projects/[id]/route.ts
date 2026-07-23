@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isUnauthorized, requireAdminSession } from "@/lib/api-auth";
 import { serializeProjectLinks } from "@/lib/project-links";
+import {
+  serializeProjectImages,
+  syncCoverFromGallery,
+  resolveProjectGallery,
+} from "@/lib/project-images";
 import { ephemeralWriteError, isEphemeralDatabase } from "@/lib/db-mode";
 
 type RouteContext = {
@@ -58,16 +63,28 @@ export async function PUT(request: Request, context: RouteContext) {
   try {
     const body = await request.json();
 
+    const hasMedia =
+      typeof body.image === "string" || Array.isArray(body.images);
+    const media = hasMedia
+      ? syncCoverFromGallery(resolveProjectGallery(body.image ?? "", body.images ?? []))
+      : null;
+
     const data = {
       title: body.title,
       category: body.category,
       year: body.year,
       description: body.description,
       detail: body.detail ?? "",
-      image: body.image,
+      ...(media
+        ? {
+            image: media.image,
+            images: serializeProjectImages(media.images),
+          }
+        : {}),
       video: body.video,
-      links: serializeProjectLinks(body.links),
+      links: body.links !== undefined ? serializeProjectLinks(body.links) : undefined,
       featured: body.featured,
+      completed: typeof body.completed === "boolean" ? body.completed : undefined,
       order: body.order,
     };
 
@@ -80,10 +97,19 @@ export async function PUT(request: Request, context: RouteContext) {
       data: cleaned,
     });
 
-    // Keep matching-order project on the other language in sync for media fields.
-    const mediaPatch: { image?: string; video?: string } = {};
-    if (typeof body.image === "string") mediaPatch.image = body.image;
+    // Keep matching-order project on the other language in sync for media + status.
+    const mediaPatch: {
+      image?: string;
+      images?: string;
+      video?: string;
+      completed?: boolean;
+    } = {};
+    if (media) {
+      mediaPatch.image = media.image;
+      mediaPatch.images = serializeProjectImages(media.images);
+    }
     if (typeof body.video === "string") mediaPatch.video = body.video;
+    if (typeof body.completed === "boolean") mediaPatch.completed = body.completed;
     if (Object.keys(mediaPatch).length > 0) {
       const otherLang = project.lang === "en" ? "ru" : "en";
       await prisma.project.updateMany({
@@ -92,7 +118,12 @@ export async function PUT(request: Request, context: RouteContext) {
       });
     }
 
-    return NextResponse.json(project);
+    const gallery = resolveProjectGallery(project.image, project.images);
+    return NextResponse.json({
+      ...project,
+      image: gallery[0] || project.image,
+      images: gallery,
+    });
   } catch (error) {
     const mapped = mapWriteError(error, "Не удалось обновить проект");
     return NextResponse.json(

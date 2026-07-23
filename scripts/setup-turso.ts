@@ -64,6 +64,8 @@ async function main() {
   // Safe upgrades for existing databases created from older schemas.
   const upgrades = [
     `ALTER TABLE "Project" ADD COLUMN "video" TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE "Project" ADD COLUMN "images" TEXT NOT NULL DEFAULT '[]'`,
+    `ALTER TABLE "Project" ADD COLUMN "completed" BOOLEAN NOT NULL DEFAULT true`,
   ];
   for (const statement of upgrades) {
     try {
@@ -76,7 +78,7 @@ async function main() {
         continue;
       }
       // Some SQLite builds phrase errors differently — keep going if column exists.
-      if (/video/i.test(message) && /exists/i.test(message)) continue;
+      if (/(video|images|completed)/i.test(message) && /exists/i.test(message)) continue;
       console.log(`upgrade note: ${message}`);
     }
   }

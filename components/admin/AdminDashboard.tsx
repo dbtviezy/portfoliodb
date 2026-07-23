@@ -20,8 +20,10 @@ import {
   StudioPanel,
 } from "@/components/admin/studio-ui";
 import { ImageUploader } from "@/components/admin/ImageUploader";
+import { GalleryUploader } from "@/components/admin/GalleryUploader";
 import { VideoUploader } from "@/components/admin/VideoUploader";
 import { ProjectCardImageDrop } from "@/components/admin/ProjectCardImageDrop";
+import { resolveProjectGallery, syncCoverFromGallery } from "@/lib/project-images";
 
 type AdminLang = "en" | "ru";
 
@@ -41,13 +43,16 @@ const emptyProject: ProjectItem = {
   description: "",
   detail: "",
   image: "",
+  images: [],
   video: "",
   links: [],
   featured: false,
+  completed: true,
 };
 
 function normalizeAdminProject(raw: Record<string, unknown>): ProjectItem {
   const numericId = Number(raw.id);
+  const gallery = resolveProjectGallery(String(raw.image ?? ""), raw.images);
   return {
     id: Number.isFinite(numericId) && numericId > 0 ? numericId : undefined,
     title: String(raw.title ?? ""),
@@ -55,9 +60,11 @@ function normalizeAdminProject(raw: Record<string, unknown>): ProjectItem {
     year: String(raw.year ?? ""),
     description: String(raw.description ?? ""),
     detail: String(raw.detail ?? ""),
-    image: String(raw.image ?? ""),
+    image: gallery[0] || String(raw.image ?? ""),
+    images: gallery,
     video: String(raw.video ?? ""),
     featured: Boolean(raw.featured),
+    completed: raw.completed !== false && raw.completed !== 0 && raw.completed !== "false",
     order: typeof raw.order === "number" ? raw.order : Number(raw.order) || 0,
     links: Array.isArray(raw.links)
       ? (raw.links as ProjectItem["links"])
@@ -288,10 +295,12 @@ export default function AdminDashboard() {
     setSaving(true);
     setMessage("");
     try {
+      const rest = (project.images ?? []).filter((url) => url && url !== project.image);
+      const media = syncCoverFromGallery([imageUrl, ...rest]);
       const response = await fetch(`/api/admin/projects/${project.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...project, image: imageUrl, lang }),
+        body: JSON.stringify({ ...project, ...media, lang }),
       });
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
@@ -299,7 +308,9 @@ export default function AdminDashboard() {
         return;
       }
       setProjects((rows) =>
-        rows.map((row) => (row.id === project.id ? { ...row, image: imageUrl } : row))
+        rows.map((row) =>
+          row.id === project.id ? { ...row, image: media.image, images: media.images } : row
+        )
       );
       setMessage("Фото проекта обновлено");
     } catch {
@@ -523,7 +534,7 @@ export default function AdminDashboard() {
 
               <div className="space-y-2">
                 <p className="text-xs text-[var(--text-faint)]">
-                  Перетащи фото на превью. Порядок: кнопки ↑ ↓. В Edit можно добавить видео-loop.
+                  Перетащи фото на превью. В Edit — несколько фото и статус «закончено».
                 </p>
                 {projects.map((project, index) => (
                   <div
@@ -543,6 +554,10 @@ export default function AdminDashboard() {
                           {project.year} · {project.category}
                           {project.featured ? " · Featured" : ""}
                           {project.video ? " · Video" : ""}
+                          {(project.images?.length ?? 0) > 1
+                            ? ` · ${project.images!.length} фото`
+                            : ""}
+                          {project.completed === false ? " · In progress" : " · Done"}
                         </p>
                       </div>
                     </div>
@@ -820,11 +835,18 @@ export default function AdminDashboard() {
                 <StudioField label="Title" value={currentProject.title} onChange={(value) => setEditingProject({ ...currentProject, title: value })} />
                 <StudioField label="Category" value={currentProject.category} onChange={(value) => setEditingProject({ ...currentProject, category: value })} />
                 <StudioField label="Year" value={currentProject.year} onChange={(value) => setEditingProject({ ...currentProject, year: value })} />
-                <ImageUploader
-                  label="Project photo"
+                <GalleryUploader
+                  label="Photos"
                   folder="projects"
-                  value={currentProject.image}
-                  onChange={(value) => setEditingProject({ ...currentProject, image: value })}
+                  images={currentProject.images?.length ? currentProject.images : currentProject.image ? [currentProject.image] : []}
+                  onChange={(images) => {
+                    const media = syncCoverFromGallery(images);
+                    setEditingProject({
+                      ...currentProject,
+                      image: media.image,
+                      images: media.images,
+                    });
+                  }}
                 />
                 <VideoUploader
                   label="Video loop (optional)"
@@ -895,6 +917,18 @@ export default function AdminDashboard() {
                     ))}
                   </div>
                 </div>
+
+                <label className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
+                  <input
+                    type="checkbox"
+                    checked={currentProject.completed !== false}
+                    onChange={(e) =>
+                      setEditingProject({ ...currentProject, completed: e.target.checked })
+                    }
+                    className="rounded border-[var(--border)]"
+                  />
+                  Работа закончена
+                </label>
 
                 <label className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
                   <input

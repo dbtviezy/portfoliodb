@@ -18,10 +18,12 @@ export type Lang = "RU" | "EN";
 const ProjectCard = memo(function ProjectCard({
   project,
   index,
+  lang,
   onOpen,
 }: {
   project: ProjectItem;
   index: number;
+  lang: Lang;
   onOpen: (project: ProjectItem) => void;
 }) {
   return (
@@ -49,7 +51,19 @@ const ProjectCard = memo(function ProjectCard({
         <span className="shrink-0 font-mono text-xs text-[var(--text-faint)] sm:text-sm">{project.year}</span>
       </div>
 
-      <p className="mb-1.5 text-[13px] text-[var(--text-muted)] sm:mb-2 sm:text-sm">{project.category}</p>
+      <p className="mb-1.5 text-[13px] text-[var(--text-muted)] sm:mb-2 sm:text-sm">
+        {project.category}
+        {project.completed === false
+          ? lang === "RU"
+            ? " · в работе"
+            : " · in progress"
+          : ""}
+        {(project.images?.length ?? 0) > 1
+          ? lang === "RU"
+            ? ` · ${project.images!.length} фото`
+            : ` · ${project.images!.length} photos`
+          : ""}
+      </p>
       <p className="line-clamp-2 text-[13px] leading-relaxed text-[var(--text-faint)] sm:text-sm">
         {project.description}
       </p>
@@ -142,6 +156,7 @@ function ProjectsPageContent() {
               key={project.id ?? index}
               project={project}
               index={index}
+              lang={lang}
               onOpen={openProject}
             />
           ))}

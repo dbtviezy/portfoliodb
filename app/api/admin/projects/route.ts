@@ -3,6 +3,11 @@ import { prisma } from "@/lib/prisma";
 import { toLangCode, type LangCode } from "@/lib/content";
 import { isUnauthorized, requireAdminSession } from "@/lib/api-auth";
 import { serializeProjectLinks, type ProjectLink } from "@/lib/project-links";
+import {
+  serializeProjectImages,
+  syncCoverFromGallery,
+  resolveProjectGallery,
+} from "@/lib/project-images";
 import { ephemeralWriteError, isEphemeralDatabase } from "@/lib/db-mode";
 
 type ProjectPayload = {
@@ -13,9 +18,11 @@ type ProjectPayload = {
   description?: string;
   detail?: string;
   image?: string;
+  images?: string[];
   video?: string;
   links?: ProjectLink[];
   featured?: boolean;
+  completed?: boolean;
   order?: number;
 };
 
@@ -52,6 +59,11 @@ function mapWriteError(error: unknown, fallback: string) {
   return { error: fallback, code: "write_failed" as const, status: 500 };
 }
 
+function mediaFromPayload(body: ProjectPayload) {
+  const gallery = resolveProjectGallery(body.image ?? "", body.images ?? []);
+  return syncCoverFromGallery(gallery);
+}
+
 export async function GET(request: Request) {
   const session = await requireAdminSession();
   if (isUnauthorized(session)) return session;
@@ -67,7 +79,16 @@ export async function GET(request: Request) {
     orderBy: { order: "asc" },
   });
 
-  return NextResponse.json(projects);
+  return NextResponse.json(
+    projects.map((project) => {
+      const gallery = resolveProjectGallery(project.image, project.images);
+      return {
+        ...project,
+        image: gallery[0] || project.image,
+        images: gallery,
+      };
+    })
+  );
 }
 
 export async function POST(request: Request) {
@@ -80,9 +101,13 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as ProjectPayload;
     const lang = toLangCode(body.lang ?? "en");
+    const media = mediaFromPayload(body);
 
-    if (!body.title || !body.category || !body.year || !body.description || !body.image) {
-      return NextResponse.json({ error: "Заполни title, category, year, description и image" }, { status: 400 });
+    if (!body.title || !body.category || !body.year || !body.description || !media.image) {
+      return NextResponse.json(
+        { error: "Заполни title, category, year, description и хотя бы одно фото" },
+        { status: 400 }
+      );
     }
 
     const count = await prisma.project.count({ where: { lang } });
@@ -95,26 +120,34 @@ export async function POST(request: Request) {
         year: body.year,
         description: body.description,
         detail: body.detail ?? "",
-        image: body.image,
+        image: media.image,
+        images: serializeProjectImages(media.images),
         video: body.video ?? "",
         links: serializeProjectLinks(body.links),
         featured: body.featured ?? false,
+        completed: body.completed !== false,
         order: body.order ?? count,
       },
     });
 
-    if (body.image?.trim() || body.video?.trim()) {
-      const otherLang = lang === "en" ? "ru" : "en";
-      await prisma.project.updateMany({
-        where: { lang: otherLang, order: project.order },
-        data: {
-          ...(body.image?.trim() ? { image: body.image } : {}),
-          ...(body.video?.trim() ? { video: body.video } : {}),
-        },
-      });
-    }
+    const otherLang = lang === "en" ? "ru" : "en";
+    await prisma.project.updateMany({
+      where: { lang: otherLang, order: project.order },
+      data: {
+        image: media.image,
+        images: serializeProjectImages(media.images),
+        ...(body.video?.trim() ? { video: body.video } : {}),
+        completed: body.completed !== false,
+      },
+    });
 
-    return NextResponse.json(project, { status: 201 });
+    return NextResponse.json(
+      {
+        ...project,
+        images: media.images,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     const mapped = mapWriteError(error, "Не удалось создать проект");
     return NextResponse.json(

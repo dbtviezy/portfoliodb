@@ -85,9 +85,11 @@ model Project {
   description String
   detail      String   @default("")
   image       String
+  images      String   @default("[]")
   video       String   @default("")
   links       String   @default("[]")
   featured    Boolean  @default(false)
+  completed   Boolean  @default(true)
   order       Int      @default(0)
   lang        String   @default("en")
   createdAt   DateTime @default(now())
