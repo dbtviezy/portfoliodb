@@ -20,6 +20,7 @@ import {
   StudioPanel,
 } from "@/components/admin/studio-ui";
 import { ImageUploader } from "@/components/admin/ImageUploader";
+import { ProjectCardImageDrop } from "@/components/admin/ProjectCardImageDrop";
 
 type AdminLang = "en" | "ru";
 
@@ -266,6 +267,33 @@ export default function AdminDashboard() {
     }
   }
 
+  /** Quick image replace from Work list card (upload already done). */
+  async function updateProjectImage(project: ProjectItem, imageUrl: string) {
+    if (!project.id) return;
+    setSaving(true);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/admin/projects/${project.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...project, image: imageUrl, lang }),
+      });
+      if (!response.ok) {
+        const data = (await response.json().catch(() => ({}))) as { error?: string };
+        setMessage(data.error ?? "Не удалось обновить фото");
+        return;
+      }
+      setProjects((rows) =>
+        rows.map((row) => (row.id === project.id ? { ...row, image: imageUrl } : row))
+      );
+      setMessage("Фото проекта обновлено");
+    } catch {
+      setMessage("Не удалось обновить фото");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function deleteProject(id: number) {
     if (!confirm("Удалить этот проект?")) return;
     setSaving(true);
@@ -423,17 +451,28 @@ export default function AdminDashboard() {
               </div>
 
               <div className="space-y-2">
+                <p className="text-xs text-[var(--text-faint)]">
+                  Перетащи фото прямо на превью карточки — сохранится сразу. Или открой Edit для полного редактора.
+                </p>
                 {projects.map((project) => (
                   <div
                     key={project.id}
                     className="flex flex-col justify-between gap-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg)] p-4 md:flex-row md:items-center"
                   >
-                    <div className="min-w-0">
-                      <p className="truncate font-medium">{project.title}</p>
-                      <p className="mt-0.5 text-xs text-[var(--text-faint)]">
-                        {project.year} · {project.category}
-                        {project.featured ? " · Featured" : ""}
-                      </p>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <ProjectCardImageDrop
+                        image={project.image}
+                        title={project.title || "project"}
+                        disabled={saving}
+                        onUploaded={(url) => updateProjectImage(project, url)}
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">{project.title}</p>
+                        <p className="mt-0.5 text-xs text-[var(--text-faint)]">
+                          {project.year} · {project.category}
+                          {project.featured ? " · Featured" : ""}
+                        </p>
+                      </div>
                     </div>
                     <div className="flex shrink-0 gap-2">
                       <StudioButton
