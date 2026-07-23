@@ -98,6 +98,14 @@ export async function POST(request: Request) {
       },
     });
 
+    if (body.image?.trim()) {
+      const otherLang = lang === "en" ? "ru" : "en";
+      await prisma.project.updateMany({
+        where: { lang: otherLang, order: project.order },
+        data: { image: body.image },
+      });
+    }
+
     return NextResponse.json(project, { status: 201 });
   } catch (error) {
     const mapped = mapWriteError(error, "Не удалось создать проект");
