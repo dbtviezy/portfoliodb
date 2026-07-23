@@ -82,7 +82,9 @@ export async function getPortfolioContent(langInput: LangCode | "RU" | "EN"): Pr
     ? toLangCode(langInput.toUpperCase() as "RU" | "EN")
     : (langInput as LangCode);
 
+  const { ensureSchemaUpgrades } = await import("@/lib/ensure-schema");
   const { ensurePortfolioSeeded } = await import("@/lib/ensure-seed");
+  await ensureSchemaUpgrades();
   await ensurePortfolioSeeded();
 
   const [portfolio, skills, expertise, projects] = await Promise.all([

@@ -72,6 +72,7 @@ export default function AdminDashboard() {
   const [content, setContent] = useState<PortfolioContent | null>(null);
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [email, setEmail] = useState("");
@@ -84,6 +85,7 @@ export default function AdminDashboard() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    setLoadError("");
     try {
       const [meRes, portfolioRes, projectsRes, dbRes] = await Promise.all([
         fetch("/api/auth/me"),
@@ -116,12 +118,22 @@ export default function AdminDashboard() {
           ...data,
           contact: { ...data.contact, channels },
         });
+      } else {
+        const err = (await portfolioRes.json().catch(() => ({}))) as { error?: string };
+        setContent(null);
+        setLoadError(err.error || `Portfolio load failed (${portfolioRes.status})`);
       }
 
       if (projectsRes.ok) {
         const rows = await projectsRes.json();
         setProjects((rows as Record<string, unknown>[]).map(normalizeAdminProject));
+      } else if (portfolioRes.ok) {
+        const err = (await projectsRes.json().catch(() => ({}))) as { error?: string };
+        setLoadError(err.error || `Projects load failed (${projectsRes.status})`);
       }
+    } catch (error) {
+      setContent(null);
+      setLoadError(error instanceof Error ? error.message : "Failed to load studio");
     } finally {
       setLoading(false);
     }
@@ -352,10 +364,30 @@ export default function AdminDashboard() {
     }
   }
 
-  if (loading || !content) {
+  if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center">
         <p className="text-sm text-[var(--text-faint)]">Loading studio...</p>
+      </main>
+    );
+  }
+
+  if (!content || loadError) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
+        <p className="text-sm text-[var(--text-muted)]">Studio couldn&apos;t load content.</p>
+        {loadError ? (
+          <p className="max-w-md font-mono text-[11px] leading-relaxed text-[var(--text-faint)]">
+            {loadError}
+          </p>
+        ) : null}
+        <button
+          type="button"
+          onClick={() => void loadData()}
+          className="rounded-md border border-[var(--border)] px-4 py-2 text-sm text-[var(--text)] transition hover:bg-white/5"
+        >
+          Retry
+        </button>
       </main>
     );
   }

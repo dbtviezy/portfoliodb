@@ -56,6 +56,9 @@ export async function GET(request: Request) {
   const session = await requireAdminSession();
   if (isUnauthorized(session)) return session;
 
+  const { ensureSchemaUpgrades } = await import("@/lib/ensure-schema");
+  await ensureSchemaUpgrades();
+
   const { searchParams } = new URL(request.url);
   const lang = toLangCode(searchParams.get("lang") ?? "en");
 
