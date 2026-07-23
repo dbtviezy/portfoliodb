@@ -87,8 +87,11 @@ export default function AdminDashboard() {
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [dbBanner, setDbBanner] = useState("");
+  const [translating, setTranslating] = useState(false);
 
   const currentProject = editingProject;
+  const targetLang = lang === "en" ? "ru" : "en";
+  const targetLangLabel = targetLang.toUpperCase();
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -172,8 +175,8 @@ export default function AdminDashboard() {
     };
   }, [editingProject, isCreatingProject, closeProjectEditor]);
 
-  async function savePortfolio() {
-    if (!content) return;
+  async function savePortfolio(): Promise<boolean> {
+    if (!content) return false;
     setSaving(true);
     setMessage("");
 
@@ -230,7 +233,7 @@ export default function AdminDashboard() {
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
         setMessage(data.error ?? "Не удалось сохранить");
-        return;
+        return false;
       }
       const saved = (await response.json()) as PortfolioContent;
       const savedChannels = resolveContactChannels(saved.contact.channels, saved.contact);
@@ -239,8 +242,10 @@ export default function AdminDashboard() {
         contact: { ...saved.contact, channels: savedChannels },
       });
       setMessage("Сохранено — сайт читает эти данные из базы");
+      return true;
     } catch {
       setMessage("Не удалось сохранить");
+      return false;
     } finally {
       setSaving(false);
     }
@@ -258,7 +263,7 @@ export default function AdminDashboard() {
     }
   }
 
-  async function saveProject(project: ProjectItem) {
+  async function saveProject(project: ProjectItem): Promise<boolean> {
     setSaving(true);
     setMessage("");
 
@@ -276,16 +281,71 @@ export default function AdminDashboard() {
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
         setMessage(data.error ?? "Не удалось сохранить проект");
-        return;
+        return false;
       }
       setEditingProject(null);
       setIsCreatingProject(false);
       await loadData();
       setMessage(isNew ? "Проект создан" : "Проект обновлён — сразу на сайте");
+      return true;
     } catch {
       setMessage("Не удалось сохранить проект");
+      return false;
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function translateCloud(scope: "portfolio" | "project" | "projects", projectId?: number) {
+    setTranslating(true);
+    setMessage("");
+    try {
+      if (scope === "portfolio") {
+        const saved = await savePortfolio();
+        if (!saved) return;
+      } else if (scope === "project") {
+        if (!editingProject) return;
+        const isNew = !editingProject.id;
+        const response = await fetch(
+          isNew ? "/api/admin/projects" : `/api/admin/projects/${editingProject.id}`,
+          {
+            method: isNew ? "POST" : "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...editingProject, lang }),
+          }
+        );
+        if (!response.ok) {
+          const data = (await response.json().catch(() => ({}))) as { error?: string };
+          setMessage(data.error ?? "Сначала сохрани проект");
+          return;
+        }
+        const saved = normalizeAdminProject(
+          (await response.json()) as Record<string, unknown>
+        );
+        projectId = saved.id;
+        setEditingProject(saved);
+        setIsCreatingProject(false);
+      }
+
+      const response = await fetch("/api/admin/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lang, scope, projectId }),
+      });
+      const data = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        message?: string;
+      };
+      if (!response.ok) {
+        setMessage(data.error ?? "Не удалось перевести");
+        return;
+      }
+      await loadData();
+      setMessage(data.message ?? `Переведено на ${targetLangLabel} и сохранено в облаке`);
+    } catch {
+      setMessage("Не удалось перевести");
+    } finally {
+      setTranslating(false);
     }
   }
 
@@ -521,15 +581,25 @@ export default function AdminDashboard() {
             <div className="space-y-5">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-base font-semibold">Work · {projects.length}</h2>
-                <StudioButton
-                  type="button"
-                  onClick={() => {
-                    setIsCreatingProject(true);
-                    setEditingProject({ ...emptyProject });
-                  }}
-                >
-                  Add project
-                </StudioButton>
+                <div className="flex flex-wrap gap-2">
+                  <StudioButton
+                    type="button"
+                    variant="subtle"
+                    disabled={saving || translating || projects.length === 0}
+                    onClick={() => void translateCloud("projects")}
+                  >
+                    {translating ? "…" : `Translate all → ${targetLangLabel}`}
+                  </StudioButton>
+                  <StudioButton
+                    type="button"
+                    onClick={() => {
+                      setIsCreatingProject(true);
+                      setEditingProject({ ...emptyProject });
+                    }}
+                  >
+                    Add project
+                  </StudioButton>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -778,9 +848,17 @@ export default function AdminDashboard() {
           )}
 
           {tab !== "projects" && (
-            <div className="flex items-center gap-4 border-t border-[var(--border)] pt-5">
-              <StudioButton type="button" disabled={saving} onClick={() => savePortfolio()}>
+            <div className="flex flex-wrap items-center gap-3 border-t border-[var(--border)] pt-5">
+              <StudioButton type="button" disabled={saving || translating} onClick={() => void savePortfolio()}>
                 {saving ? "Saving..." : "Save changes"}
+              </StudioButton>
+              <StudioButton
+                type="button"
+                variant="subtle"
+                disabled={saving || translating}
+                onClick={() => void translateCloud("portfolio")}
+              >
+                {translating ? "Translating…" : `Save & translate → ${targetLangLabel}`}
               </StudioButton>
               {message && (
                 <span className="text-sm text-[var(--text-muted)]">{message}</span>
@@ -944,9 +1022,21 @@ export default function AdminDashboard() {
                 </label>
               </div>
 
-              <div className="flex items-center gap-2 border-t border-[var(--border)] px-5 py-4 md:px-6">
-                <StudioButton type="button" disabled={saving} onClick={() => saveProject(currentProject)}>
+              <div className="flex flex-wrap items-center gap-2 border-t border-[var(--border)] px-5 py-4 md:px-6">
+                <StudioButton
+                  type="button"
+                  disabled={saving || translating}
+                  onClick={() => void saveProject(currentProject)}
+                >
                   {saving ? "Saving..." : "Save project"}
+                </StudioButton>
+                <StudioButton
+                  type="button"
+                  variant="subtle"
+                  disabled={saving || translating}
+                  onClick={() => void translateCloud("project", currentProject.id)}
+                >
+                  {translating ? "Translating…" : `Save & translate → ${targetLangLabel}`}
                 </StudioButton>
                 <StudioButton type="button" variant="ghost" onClick={closeProjectEditor}>
                   Cancel
