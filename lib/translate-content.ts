@@ -17,9 +17,13 @@ function otherLang(lang: LangCode): LangCode {
 }
 
 async function ensurePortfolioRow(lang: LangCode) {
+  const { ensureBlankPortfolioRows } = await import("@/lib/ensure-seed");
+  await ensureBlankPortfolioRows();
   const existing = await prisma.portfolio.findFirst({ where: { lang } });
-  if (existing) return existing;
-  return prisma.portfolio.create({ data: { lang } });
+  if (!existing) {
+    throw new Error(`Portfolio row missing for ${lang}`);
+  }
+  return existing;
 }
 
 async function syncListItems(

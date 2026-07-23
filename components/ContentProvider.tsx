@@ -2,10 +2,8 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { PortfolioContent } from "@/lib/content";
-import { channelsFromLegacy } from "@/lib/contact-channels";
+import { emptyPortfolioContent } from "@/lib/empty-content";
 import { isUsableProfileImage } from "@/lib/media";
-import ruFallback from "@/locales/ru.json";
-import enFallback from "@/locales/en.json";
 
 export type Lang = "RU" | "EN";
 
@@ -31,51 +29,6 @@ function readStoredLang(fallback: Lang): Lang {
     // ignore
   }
   return fallback;
-}
-
-function fallbackContent(lang: Lang): PortfolioContent {
-  const source = lang === "RU" ? ruFallback : enFallback;
-  const mapProjects = (items: typeof source.projects.allItems) =>
-    items.map((item) => ({
-      ...item,
-      detail: "",
-      video: "",
-      images: item.image ? [item.image] : [],
-      imageFrame: { zoom: 1, x: 50, y: 50 },
-      completed: true,
-      links: [] as { label: string; url: string }[],
-    }));
-
-  const email = "daniilbautin0@gmail.com";
-  const telegram = "@dbtviezy";
-  const behance = "behance.net/3606019f";
-  const dribbble = "dribbble.com/db-tviezy";
-
-  return {
-    navbar: source.navbar,
-    hero: source.hero,
-    about: {
-      ...source.about,
-      profileImage: isUsableProfileImage(source.about.profileImage)
-        ? source.about.profileImage
-        : "",
-    },
-    projects: {
-      ...source.projects,
-      featured: mapProjects(source.projects.featured),
-      allItems: mapProjects(source.projects.allItems),
-    },
-    skills: source.skills,
-    contact: {
-      ...source.contact,
-      email,
-      telegram,
-      behance,
-      dribbble,
-      instagram: "",
-      channels: channelsFromLegacy({ email, telegram, behance, dribbble, instagram: "" }),
-    },
-  };
 }
 
 export function ContentProvider({
@@ -138,7 +91,8 @@ export function ContentProvider({
         setReady(true);
       } catch {
         if (cancelled) return;
-        setContent((previous) => previous ?? fallbackContent(lang));
+        // Never fall back to locale Unsplash demos — keep previous cloud data or empty shell.
+        setContent((previous) => previous ?? emptyPortfolioContent(lang));
         setReady(true);
       } finally {
         if (!cancelled) setLoading(false);
@@ -155,20 +109,18 @@ export function ContentProvider({
     () => ({
       lang,
       setLang,
-      content: content ?? fallbackContent(lang),
+      content: content ?? emptyPortfolioContent(lang),
       loading,
-      ready: ready && hydrated,
+      ready,
     }),
-    [lang, content, loading, ready, hydrated]
+    [lang, content, loading, ready]
   );
 
   return <ContentContext.Provider value={value}>{children}</ContentContext.Provider>;
 }
 
 export function useContent() {
-  const context = useContext(ContentContext);
-  if (!context) {
-    throw new Error("useContent must be used within ContentProvider");
-  }
-  return context;
+  const ctx = useContext(ContentContext);
+  if (!ctx) throw new Error("useContent must be used within ContentProvider");
+  return ctx;
 }

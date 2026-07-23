@@ -1,6 +1,7 @@
 /**
- * Build-time helper for Vercel: create prisma/deploy.db with schema + seed.
+ * Build-time helper for Vercel: create prisma/deploy.db with schema + admin/blank rows.
  * Runtime copies this file to /tmp when Turso is not configured.
+ * Does NOT seed Unsplash demo projects — content comes from Studio/Turso.
  */
 import { spawnSync } from "node:child_process";
 import { existsSync, unlinkSync } from "node:fs";

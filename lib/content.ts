@@ -91,9 +91,10 @@ export async function getPortfolioContent(langInput: LangCode | "RU" | "EN"): Pr
     : (langInput as LangCode);
 
   const { ensureSchemaUpgrades } = await import("@/lib/ensure-schema");
-  const { ensurePortfolioSeeded } = await import("@/lib/ensure-seed");
+  const { ensureBlankPortfolioRows } = await import("@/lib/ensure-seed");
+  const { emptyPortfolioContent } = await import("@/lib/empty-content");
   await ensureSchemaUpgrades();
-  await ensurePortfolioSeeded();
+  await ensureBlankPortfolioRows();
 
   const [portfolio, skills, expertise, projects] = await Promise.all([
     prisma.portfolio.findFirst({ where: { lang } }),
@@ -103,7 +104,7 @@ export async function getPortfolioContent(langInput: LangCode | "RU" | "EN"): Pr
   ]);
 
   if (!portfolio) {
-    throw new Error(`Portfolio content for "${lang}" was not found`);
+    return emptyPortfolioContent(lang);
   }
 
   const { isUsableProfileImage } = await import("@/lib/media");
