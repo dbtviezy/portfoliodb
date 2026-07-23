@@ -23,6 +23,7 @@ import { ImageUploader } from "@/components/admin/ImageUploader";
 import { GalleryUploader } from "@/components/admin/GalleryUploader";
 import { ImageFrameEditor } from "@/components/admin/ImageFrameEditor";
 import { VideoUploader } from "@/components/admin/VideoUploader";
+import { VideoFrameCover } from "@/components/admin/VideoFrameCover";
 import { ProjectCardImageDrop } from "@/components/admin/ProjectCardImageDrop";
 import { resolveProjectGallery, syncCoverFromGallery } from "@/lib/project-images";
 import { DEFAULT_IMAGE_FRAME, parseImageFrame } from "@/lib/image-frame";
@@ -940,6 +941,22 @@ export default function AdminDashboard() {
                   folder="projects"
                   value={currentProject.video ?? ""}
                   onChange={(value) => setEditingProject({ ...currentProject, video: value })}
+                />
+                <VideoFrameCover
+                  videoUrl={currentProject.video ?? ""}
+                  hasCover={Boolean(currentProject.image?.trim())}
+                  folder="projects"
+                  onCover={(imageUrl) => {
+                    const rest = (currentProject.images ?? []).filter(
+                      (url) => url && url !== currentProject.image && url !== imageUrl
+                    );
+                    const media = syncCoverFromGallery([imageUrl, ...rest]);
+                    setEditingProject({
+                      ...currentProject,
+                      image: media.image,
+                      images: media.images,
+                    });
+                  }}
                 />
                 <StudioField label="Short description" value={currentProject.description} onChange={(value) => setEditingProject({ ...currentProject, description: value })} multiline />
                 <StudioField
