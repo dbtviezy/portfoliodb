@@ -66,6 +66,7 @@ async function main() {
     `ALTER TABLE "Project" ADD COLUMN "video" TEXT NOT NULL DEFAULT ''`,
     `ALTER TABLE "Project" ADD COLUMN "images" TEXT NOT NULL DEFAULT '[]'`,
     `ALTER TABLE "Project" ADD COLUMN "completed" BOOLEAN NOT NULL DEFAULT true`,
+    `ALTER TABLE "Project" ADD COLUMN "imageFrame" TEXT NOT NULL DEFAULT '{"zoom":1,"x":50,"y":50}'`,
   ];
   for (const statement of upgrades) {
     try {
@@ -78,7 +79,7 @@ async function main() {
         continue;
       }
       // Some SQLite builds phrase errors differently — keep going if column exists.
-      if (/(video|images|completed)/i.test(message) && /exists/i.test(message)) continue;
+      if (/(video|images|completed|imageFrame)/i.test(message) && /exists/i.test(message)) continue;
       console.log(`upgrade note: ${message}`);
     }
   }

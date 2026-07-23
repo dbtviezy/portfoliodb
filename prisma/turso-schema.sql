@@ -79,6 +79,7 @@ CREATE TABLE "Project" (
     "detail" TEXT NOT NULL DEFAULT '',
     "image" TEXT NOT NULL,
     "images" TEXT NOT NULL DEFAULT '[]',
+    "imageFrame" TEXT NOT NULL DEFAULT '{"zoom":1,"x":50,"y":50}',
     "video" TEXT NOT NULL DEFAULT '',
     "links" TEXT NOT NULL DEFAULT '[]',
     "featured" BOOLEAN NOT NULL DEFAULT false,

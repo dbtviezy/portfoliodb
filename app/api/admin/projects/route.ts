@@ -8,6 +8,7 @@ import {
   syncCoverFromGallery,
   resolveProjectGallery,
 } from "@/lib/project-images";
+import { parseImageFrame, serializeImageFrame } from "@/lib/image-frame";
 import { ephemeralWriteError, isEphemeralDatabase } from "@/lib/db-mode";
 
 type ProjectPayload = {
@@ -19,6 +20,7 @@ type ProjectPayload = {
   detail?: string;
   image?: string;
   images?: string[];
+  imageFrame?: { zoom?: number; x?: number; y?: number };
   video?: string;
   links?: ProjectLink[];
   featured?: boolean;
@@ -86,6 +88,7 @@ export async function GET(request: Request) {
         ...project,
         image: gallery[0] || project.image,
         images: gallery,
+        imageFrame: parseImageFrame(project.imageFrame),
       };
     })
   );
@@ -112,6 +115,8 @@ export async function POST(request: Request) {
 
     const count = await prisma.project.count({ where: { lang } });
 
+    const frameJson = serializeImageFrame(body.imageFrame);
+
     const project = await prisma.project.create({
       data: {
         lang,
@@ -122,6 +127,7 @@ export async function POST(request: Request) {
         detail: body.detail ?? "",
         image: media.image,
         images: serializeProjectImages(media.images),
+        imageFrame: frameJson,
         video: body.video ?? "",
         links: serializeProjectLinks(body.links),
         featured: body.featured ?? false,
@@ -136,6 +142,7 @@ export async function POST(request: Request) {
       data: {
         image: media.image,
         images: serializeProjectImages(media.images),
+        imageFrame: frameJson,
         ...(body.video?.trim() ? { video: body.video } : {}),
         completed: body.completed !== false,
       },
@@ -145,6 +152,7 @@ export async function POST(request: Request) {
       {
         ...project,
         images: media.images,
+        imageFrame: parseImageFrame(frameJson),
       },
       { status: 201 }
     );

@@ -7,6 +7,7 @@ import {
   syncCoverFromGallery,
   resolveProjectGallery,
 } from "@/lib/project-images";
+import { parseImageFrame, serializeImageFrame } from "@/lib/image-frame";
 import { ephemeralWriteError, isEphemeralDatabase } from "@/lib/db-mode";
 
 type RouteContext = {
@@ -69,6 +70,9 @@ export async function PUT(request: Request, context: RouteContext) {
       ? syncCoverFromGallery(resolveProjectGallery(body.image ?? "", body.images ?? []))
       : null;
 
+    const hasFrame = body.imageFrame !== undefined;
+    const frameJson = hasFrame ? serializeImageFrame(body.imageFrame) : undefined;
+
     const data = {
       title: body.title,
       category: body.category,
@@ -81,6 +85,7 @@ export async function PUT(request: Request, context: RouteContext) {
             images: serializeProjectImages(media.images),
           }
         : {}),
+      ...(frameJson ? { imageFrame: frameJson } : {}),
       video: body.video,
       links: body.links !== undefined ? serializeProjectLinks(body.links) : undefined,
       featured: body.featured,
@@ -101,6 +106,7 @@ export async function PUT(request: Request, context: RouteContext) {
     const mediaPatch: {
       image?: string;
       images?: string;
+      imageFrame?: string;
       video?: string;
       completed?: boolean;
     } = {};
@@ -108,6 +114,7 @@ export async function PUT(request: Request, context: RouteContext) {
       mediaPatch.image = media.image;
       mediaPatch.images = serializeProjectImages(media.images);
     }
+    if (frameJson) mediaPatch.imageFrame = frameJson;
     if (typeof body.video === "string") mediaPatch.video = body.video;
     if (typeof body.completed === "boolean") mediaPatch.completed = body.completed;
     if (Object.keys(mediaPatch).length > 0) {
@@ -123,6 +130,7 @@ export async function PUT(request: Request, context: RouteContext) {
       ...project,
       image: gallery[0] || project.image,
       images: gallery,
+      imageFrame: parseImageFrame(project.imageFrame),
     });
   } catch (error) {
     const mapped = mapWriteError(error, "Не удалось обновить проект");

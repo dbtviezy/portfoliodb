@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { useContent } from "@/components/ContentProvider";
 import ProjectModal from "@/components/ProjectModal";
+import FramedImage from "@/components/FramedImage";
 import type { ProjectItem } from "@/lib/content";
 
 interface ProjectsProps {
@@ -123,10 +124,10 @@ const Projects = memo(function Projects({ lang }: ProjectsProps) {
                 transition={{ duration: 0.4, ease }}
                 className="h-full w-full scale-95 grayscale blur-[3px] sm:blur-[5px]"
               >
-                <img
+                <FramedImage
                   src={prev.image}
                   alt=""
-                  className="h-full w-full object-cover"
+                  frame={prev.imageFrame}
                   loading="lazy"
                   draggable={false}
                 />
@@ -149,10 +150,10 @@ const Projects = memo(function Projects({ lang }: ProjectsProps) {
                 transition={{ duration: 0.4, ease }}
                 className="h-full w-full scale-95 grayscale blur-[3px] sm:blur-[5px]"
               >
-                <img
+                <FramedImage
                   src={next.image}
                   alt=""
-                  className="h-full w-full object-cover"
+                  frame={next.imageFrame}
                   loading="lazy"
                   draggable={false}
                 />
@@ -189,13 +190,14 @@ const Projects = memo(function Projects({ lang }: ProjectsProps) {
               transition={{ duration: 0.45, ease }}
               className="group absolute left-[14%] top-0 z-10 h-full w-[72%] cursor-pointer overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg-elevated)] text-left shadow-[var(--shadow-panel)] outline-none transition duration-500 [transform-style:preserve-3d] hover:z-20 hover:scale-[1.035] hover:border-[var(--border-strong)] hover:shadow-[0_28px_60px_rgba(0,0,0,0.4)] focus-visible:ring-1 focus-visible:ring-white/30 sm:left-[21%] sm:w-[58%] md:left-[24%] md:w-[52%]"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={active.image}
-                alt={active.title}
-                className="h-full w-full object-cover transition duration-700 ease-out group-hover:scale-[1.06]"
-                draggable={false}
-              />
+              <div className="h-full w-full transition duration-700 ease-out group-hover:scale-[1.06]">
+                <FramedImage
+                  src={active.image}
+                  alt={active.title}
+                  frame={active.imageFrame}
+                  draggable={false}
+                />
+              </div>
               {active.video ? (
                 <video
                   className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-100"
@@ -205,6 +207,9 @@ const Projects = memo(function Projects({ lang }: ProjectsProps) {
                   loop
                   playsInline
                   autoPlay
+                  style={{
+                    objectPosition: `${active.imageFrame?.x ?? 50}% ${active.imageFrame?.y ?? 50}%`,
+                  }}
                 />
               ) : null}
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent px-3.5 pb-3.5 pt-12 sm:p-4 sm:pt-16 md:p-5">

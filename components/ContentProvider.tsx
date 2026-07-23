@@ -41,6 +41,7 @@ function fallbackContent(lang: Lang): PortfolioContent {
       detail: "",
       video: "",
       images: item.image ? [item.image] : [],
+      imageFrame: { zoom: 1, x: 50, y: 50 },
       completed: true,
       links: [] as { label: string; url: string }[],
     }));

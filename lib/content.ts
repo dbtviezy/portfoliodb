@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { parseProjectLinks, type ProjectLink } from "@/lib/project-links";
 import { resolveProjectGallery } from "@/lib/project-images";
+import { parseImageFrame } from "@/lib/image-frame";
 import {
   resolveContactChannels,
   type ContactChannel,
@@ -18,6 +19,8 @@ export type ProjectItem = {
   image: string;
   /** Full gallery including cover; cover is also mirrored in `image`. */
   images?: string[];
+  /** Cover framing: zoom + focus point for cards/carousel. */
+  imageFrame?: { zoom: number; x: number; y: number };
   video?: string;
   links?: ProjectLink[];
   featured?: boolean;
@@ -124,7 +127,22 @@ export async function getPortfolioContent(langInput: LangCode | "RU" | "EN"): Pr
   }
 
   const allItems = projects.map(
-    ({ id, title, category, year, description, detail, image, images, video, links, featured, completed, order }) => {
+    ({
+      id,
+      title,
+      category,
+      year,
+      description,
+      detail,
+      image,
+      images,
+      imageFrame,
+      video,
+      links,
+      featured,
+      completed,
+      order,
+    }) => {
       const gallery = resolveProjectGallery(image, images);
       return {
         id,
@@ -135,6 +153,7 @@ export async function getPortfolioContent(langInput: LangCode | "RU" | "EN"): Pr
         detail: detail || "",
         image: gallery[0] || image,
         images: gallery,
+        imageFrame: parseImageFrame(imageFrame),
         video: video || "",
         links: parseProjectLinks(links),
         featured,

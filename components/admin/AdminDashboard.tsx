@@ -21,9 +21,11 @@ import {
 } from "@/components/admin/studio-ui";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import { GalleryUploader } from "@/components/admin/GalleryUploader";
+import { ImageFrameEditor } from "@/components/admin/ImageFrameEditor";
 import { VideoUploader } from "@/components/admin/VideoUploader";
 import { ProjectCardImageDrop } from "@/components/admin/ProjectCardImageDrop";
 import { resolveProjectGallery, syncCoverFromGallery } from "@/lib/project-images";
+import { DEFAULT_IMAGE_FRAME, parseImageFrame } from "@/lib/image-frame";
 
 type AdminLang = "en" | "ru";
 
@@ -44,6 +46,7 @@ const emptyProject: ProjectItem = {
   detail: "",
   image: "",
   images: [],
+  imageFrame: { ...DEFAULT_IMAGE_FRAME },
   video: "",
   links: [],
   featured: false,
@@ -62,6 +65,7 @@ function normalizeAdminProject(raw: Record<string, unknown>): ProjectItem {
     detail: String(raw.detail ?? ""),
     image: gallery[0] || String(raw.image ?? ""),
     images: gallery,
+    imageFrame: parseImageFrame(raw.imageFrame),
     video: String(raw.video ?? ""),
     featured: Boolean(raw.featured),
     completed: raw.completed !== false && raw.completed !== 0 && raw.completed !== "false",
@@ -926,6 +930,13 @@ export default function AdminDashboard() {
                       images: media.images,
                     });
                   }}
+                />
+                <ImageFrameEditor
+                  image={currentProject.image}
+                  value={currentProject.imageFrame ?? DEFAULT_IMAGE_FRAME}
+                  onChange={(imageFrame) =>
+                    setEditingProject({ ...currentProject, imageFrame })
+                  }
                 />
                 <VideoUploader
                   label="Video loop (optional)"

@@ -6,6 +6,7 @@ import type { ProjectItem } from "@/lib/content";
 import { normalizeExternalUrl } from "@/lib/project-links";
 import { resolveProjectGallery } from "@/lib/project-images";
 import PhotoLightbox from "@/components/PhotoLightbox";
+import FramedImage from "@/components/FramedImage";
 
 type ProjectModalProps = {
   project: ProjectItem | null;
@@ -100,16 +101,17 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
               ) : (
                 <button
                   type="button"
-                  className="group relative h-full w-full cursor-zoom-in"
+                  className="group relative h-full w-full cursor-zoom-in overflow-hidden"
                   onClick={() => setLightboxOpen(true)}
                   aria-label={lang === "RU" ? "Открыть фото" : "Open photo"}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={activeImage}
-                    alt={project.title}
-                    className="h-full w-full object-cover transition duration-700 ease-out group-hover:scale-[1.04]"
-                  />
+                  <div className="h-full w-full transition duration-700 ease-out group-hover:scale-[1.04]">
+                    <FramedImage
+                      src={activeImage}
+                      alt={project.title}
+                      frame={activeIndex === 0 ? project.imageFrame : undefined}
+                    />
+                  </div>
                   <span className="pointer-events-none absolute bottom-3 left-3 rounded-full border border-white/20 bg-black/45 px-2.5 py-1 text-[10px] text-white/85 opacity-0 backdrop-blur transition group-hover:opacity-100 sm:bottom-4 sm:left-4">
                     {lang === "RU" ? "Увеличить" : "Enlarge"}
                   </span>

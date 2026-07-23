@@ -9,6 +9,7 @@ import Footer from "@/components/Footer";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ProjectModal from "@/components/ProjectModal";
 import BioModal from "@/components/BioModal";
+import FramedImage from "@/components/FramedImage";
 import { ContentProvider, useContent } from "@/components/ContentProvider";
 import ContentGate from "@/components/ContentGate";
 import type { ProjectItem } from "@/lib/content";
@@ -39,12 +40,13 @@ const ProjectCard = memo(function ProjectCard({
       className="group relative z-0 block w-full cursor-pointer text-left hover:z-10"
     >
       <div className="mb-4 aspect-[16/10] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg-elevated)] shadow-[0_0_0_transparent] transition duration-500 group-hover:border-[var(--border-strong)] group-hover:shadow-[0_22px_50px_rgba(0,0,0,0.35)] sm:mb-5">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={project.image}
-          alt={project.title}
-          className="h-full w-full object-cover opacity-85 transition duration-700 ease-out group-hover:scale-[1.08] group-hover:opacity-100"
-        />
+        <div className="h-full w-full opacity-85 transition duration-700 ease-out group-hover:scale-[1.08] group-hover:opacity-100">
+          <FramedImage
+            src={project.image}
+            alt={project.title}
+            frame={project.imageFrame}
+          />
+        </div>
       </div>
 
       <div className="mb-1 flex items-start justify-between gap-3 sm:mb-1.5">

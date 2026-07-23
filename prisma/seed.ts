@@ -110,6 +110,7 @@ async function seedLanguage(lang: "en" | "ru", data: LocaleData) {
       detail: project.description,
       image: project.image,
       images: JSON.stringify(project.image ? [project.image] : []),
+      imageFrame: JSON.stringify({ zoom: 1, x: 50, y: 50 }),
       video: "",
       links: JSON.stringify([
         { label: "Behance", url: "https://behance.net/3606019f" },

@@ -169,13 +169,14 @@ export async function translateProjectToOtherLang(projectId: number): Promise<{
     description: translated.description || source.description,
     detail: translated.detail ?? "",
     image: source.image,
-    images: serializeProjectImages(gallery),
-    video: source.video,
-    links: serializeProjectLinks(translatedLinks),
-    featured: source.featured,
-    completed: source.completed,
-    order: source.order,
-  };
+      images: serializeProjectImages(gallery),
+      video: source.video,
+      links: serializeProjectLinks(translatedLinks),
+      featured: source.featured,
+      completed: source.completed,
+      order: source.order,
+      imageFrame: source.imageFrame,
+    };
 
   let savedId: number;
   if (existing) {
