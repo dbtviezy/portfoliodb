@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, memo } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useContent } from "@/components/ContentProvider";
 
 interface NavbarProps {
@@ -13,6 +13,7 @@ const Navbar = memo(function Navbar({ lang }: NavbarProps) {
   const { content } = useContent();
   const t = content.navbar;
   const pathname = usePathname();
+  const router = useRouter();
 
   const triggerText = "db.tviezy";
   const targetText = "daniil bautin";
@@ -157,6 +158,18 @@ const Navbar = memo(function Navbar({ lang }: NavbarProps) {
                     ? "bg-white/[0.08] text-[var(--text)]"
                     : "text-[var(--text-faint)] hover:bg-white/[0.04] hover:text-[var(--text)]"
                 }`}
+                onClick={(event) => {
+                  // Already on Work with an open project (?id=) → back to the full grid.
+                  if (
+                    link.href === "/projects" &&
+                    pathname.startsWith("/projects") &&
+                    typeof window !== "undefined" &&
+                    window.location.search.includes("id=")
+                  ) {
+                    event.preventDefault();
+                    router.replace("/projects");
+                  }
+                }}
               >
                 {link.label}
               </Link>

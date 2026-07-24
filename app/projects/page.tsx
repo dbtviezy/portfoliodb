@@ -77,12 +77,18 @@ function ProjectsPageContent() {
   const { lang, content } = useContent();
   const projects = content.projects.allItems;
   const [selected, setSelected] = useState<ProjectItem | null>(null);
+  const projectIdParam = searchParams.get("id");
+
+  const clearProjectQuery = useCallback(() => {
+    router.replace("/projects", { scroll: false });
+  }, [router]);
 
   const openProject = useCallback(
     (project: ProjectItem) => {
       setSelected(project);
       if (project.id) {
-        router.replace(`/projects?id=${project.id}`, { scroll: false });
+        // Keep /projects in history so Back returns to the full grid.
+        router.push(`/projects?id=${project.id}`, { scroll: false });
       }
     },
     [router]
@@ -90,15 +96,35 @@ function ProjectsPageContent() {
 
   const closeProject = useCallback(() => {
     setSelected(null);
-    router.replace("/projects", { scroll: false });
-  }, [router]);
+    clearProjectQuery();
+  }, [clearProjectQuery]);
 
+  // Modal state follows the URL only — no id means the grid, never a leftover project.
   useEffect(() => {
-    const id = Number(searchParams.get("id"));
-    if (!id || Number.isNaN(id)) return;
+    if (!projectIdParam) {
+      setSelected(null);
+      return;
+    }
+
+    const id = Number(projectIdParam);
+    if (!Number.isFinite(id) || id <= 0) {
+      setSelected(null);
+      clearProjectQuery();
+      return;
+    }
+
+    if (projects.length === 0) return;
+
     const match = projects.find((project) => project.id === id);
-    if (match) setSelected(match);
-  }, [searchParams, projects]);
+    if (match) {
+      setSelected(match);
+      return;
+    }
+
+    // Stale / other-language id: show the grid, don't fall back to the first card.
+    setSelected(null);
+    clearProjectQuery();
+  }, [projectIdParam, projects, clearProjectQuery]);
 
   return (
     <main
