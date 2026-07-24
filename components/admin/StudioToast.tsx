@@ -56,7 +56,7 @@ export function StudioToast({
             >
               {toast.type === "err" ? "!" : "✓"}
             </span>
-            <p className="min-w-0 flex-1 text-sm leading-snug">{toast.text}</p>
+            <p className="min-w-0 flex-1 break-words text-sm leading-snug">{toast.text}</p>
             <button
               type="button"
               onClick={onDismiss}

@@ -46,11 +46,11 @@ const About = memo(function About({ lang }: AboutProps) {
 
             <div className="mt-4 grid grid-cols-3 gap-2 sm:mt-6 sm:gap-3">
               {about.stats.map((stat, idx) => (
-                <div key={idx} className="text-left">
-                  <div className="text-base font-semibold tracking-tight text-[var(--text)] sm:text-xl md:text-2xl">
+                <div key={idx} className="min-w-0 text-left">
+                  <div className="break-words text-base font-semibold tracking-tight text-[var(--text)] sm:text-xl md:text-2xl">
                     {stat.value}
                   </div>
-                  <div className="mt-0.5 text-[9px] leading-snug text-[var(--text-faint)] sm:mt-1 sm:text-[11px]">
+                  <div className="mt-0.5 break-words text-[9px] leading-snug text-[var(--text-faint)] sm:mt-1 sm:text-[11px]">
                     {stat.label}
                   </div>
                 </div>

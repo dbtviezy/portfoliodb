@@ -64,7 +64,7 @@ const Contact = memo(function Contact({ lang }: ContactProps) {
         paddingLeft: "var(--page-x)",
         paddingRight: "var(--page-x)",
         paddingTop: "calc(var(--section-y) * 0.9)",
-        paddingBottom: "calc(var(--section-y) * 0.85 + var(--safe-bottom))",
+        paddingBottom: "calc(var(--section-y) * 0.85 + var(--safe-bottom) + 3.25rem)",
       }}
     >
       <div
@@ -107,7 +107,7 @@ const Contact = memo(function Contact({ lang }: ContactProps) {
                     <span className="text-[10px] tracking-[0.2em] text-[var(--text-faint)] sm:text-[11px]">
                       {link.label}
                     </span>
-                    <span className="border-b border-white/20 pb-0.5 text-[15px] text-[var(--text)] transition group-hover:border-white/45 sm:text-base">
+                    <span className="break-all border-b border-white/20 pb-0.5 text-[15px] text-[var(--text)] transition group-hover:border-white/45 sm:text-base">
                       {link.value}
                     </span>
                   </a>

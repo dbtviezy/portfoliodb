@@ -28,7 +28,7 @@ const Skills = memo(function Skills({ lang }: SkillsProps) {
                 key={index}
                 className="flex items-center justify-center p-6 bg-zinc-900/30 border border-zinc-800/50 rounded-xl transition-all duration-300 hover:border-zinc-500 hover:bg-zinc-900 group"
               >
-                <span className="text-zinc-400 text-lg font-medium transition-colors duration-300 group-hover:text-white">
+                <span className="break-words text-center text-lg font-medium text-zinc-400 transition-colors duration-300 group-hover:text-white">
                   {skill}
                 </span>
               </div>

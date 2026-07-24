@@ -62,7 +62,7 @@ const Hero = memo(function Hero({ lang }: HeroProps) {
 
             <motion.h1
               {...enter(0.18, 26)}
-              className="whitespace-nowrap bg-gradient-to-br from-white via-[var(--text)] to-[var(--text-muted)] bg-clip-text text-[clamp(1.85rem,7.2vw,5.25rem)] font-semibold leading-none tracking-[-0.035em] text-transparent"
+              className="bg-gradient-to-br from-white via-[var(--text)] to-[var(--text-muted)] bg-clip-text text-[clamp(1.65rem,6.4vw,5.25rem)] font-semibold leading-[1.05] tracking-[-0.035em] text-transparent sm:whitespace-nowrap sm:leading-none sm:text-[clamp(1.85rem,7.2vw,5.25rem)]"
             >
               {name}
             </motion.h1>

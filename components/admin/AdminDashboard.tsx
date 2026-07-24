@@ -594,21 +594,23 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        <div className="mb-6 flex gap-0.5 overflow-x-auto rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-soft)] p-1">
-          {tabs.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setTab(item.id)}
-              className={`shrink-0 rounded-[calc(var(--radius-md)-2px)] px-3.5 py-2 text-sm transition ${
-                tab === item.id
-                  ? "bg-[var(--bg-elevated)] font-medium text-[var(--text)] shadow-sm"
-                  : "text-[var(--text-faint)] hover:text-[var(--text-muted)]"
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
+        <div className="mb-6 overflow-x-auto rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-soft)] p-1.5">
+          <div className="flex w-max min-w-full gap-0.5">
+            {tabs.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setTab(item.id)}
+                className={`shrink-0 rounded-[calc(var(--radius-md)-2px)] px-3.5 py-2 text-sm transition ${
+                  tab === item.id
+                    ? "bg-[var(--bg-elevated)] font-medium text-[var(--text)] shadow-sm"
+                    : "text-[var(--text-faint)] hover:text-[var(--text-muted)]"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <StudioPanel className="space-y-5">
@@ -652,8 +654,8 @@ export default function AdminDashboard() {
 
           {tab === "projects" && (
             <div className="space-y-5">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-base font-semibold">Work · {projects.length}</h2>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="min-w-0 text-base font-semibold">Work · {projects.length}</h2>
                 <div className="flex flex-wrap gap-2">
                   <StudioButton
                     type="button"
@@ -693,7 +695,7 @@ export default function AdminDashboard() {
                       />
                       <div className="min-w-0">
                         <p className="truncate font-medium">{project.title}</p>
-                        <p className="mt-0.5 text-xs text-[var(--text-faint)]">
+                        <p className="mt-0.5 truncate text-xs text-[var(--text-faint)]">
                           {project.year} · {project.category}
                           {project.featured ? " · Featured" : ""}
                           {(project.videos?.length || project.video)

@@ -33,14 +33,14 @@ const ProjectCard = memo(function ProjectCard({
       onClick={() => onOpen(project)}
       initial={{ opacity: 0, y: 18 }}
       whileInView={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -10, scale: 1.035 }}
+      whileHover={{ y: -8, scale: 1.02 }}
       whileTap={{ scale: 0.985 }}
       viewport={{ once: true, margin: "-80px" }}
       transition={{ delay: Math.min(index * 0.06, 0.3), duration: 0.45 }}
       className="group relative z-0 block w-full cursor-pointer text-left hover:z-10"
     >
       <div className="mb-4 aspect-[16/10] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--bg-elevated)] shadow-[0_0_0_transparent] transition duration-500 group-hover:border-[var(--border-strong)] group-hover:shadow-[0_22px_50px_rgba(0,0,0,0.35)] sm:mb-5">
-        <div className="h-full w-full opacity-85 transition duration-700 ease-out group-hover:scale-[1.08] group-hover:opacity-100">
+        <div className="h-full w-full opacity-85 transition duration-700 ease-out group-hover:opacity-100 sm:group-hover:scale-[1.04]">
           <FramedImage
             src={project.image}
             alt={project.title}

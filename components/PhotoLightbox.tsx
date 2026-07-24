@@ -85,7 +85,7 @@ export default function PhotoLightbox({
             </button>
           </div>
 
-          <div className="relative z-10 flex min-h-0 flex-1 items-center justify-center px-3 pb-4 sm:px-8">
+          <div className="relative z-10 flex min-h-0 flex-1 items-center justify-center px-10 pb-4 sm:px-14">
             {images.length > 1 ? (
               <button
                 type="button"
@@ -132,7 +132,7 @@ export default function PhotoLightbox({
 
           {images.length > 1 ? (
             <div className="relative z-10 overflow-x-auto px-4 pb-5 sm:pb-6">
-              <div className="flex w-max min-w-full justify-center gap-2 px-1 py-1">
+              <div className="flex w-max min-w-full justify-start gap-2 px-1 py-2 sm:justify-center">
                 {images.map((url, thumbIndex) => {
                   const active = thumbIndex === safeIndex;
                   return (
@@ -153,7 +153,7 @@ export default function PhotoLightbox({
                       <img
                         src={url}
                         alt=""
-                        className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                        className="h-full w-full object-cover"
                       />
                     </button>
                   );

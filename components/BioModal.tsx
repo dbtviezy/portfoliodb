@@ -114,11 +114,11 @@ export default function BioModal({ lang }: BioModalProps) {
                     </p>
                     <h2
                       id="bio-title"
-                      className="text-[clamp(1.75rem,4vw,2.35rem)] font-semibold tracking-tight text-[var(--text)]"
+                      className="break-words text-[clamp(1.75rem,4vw,2.35rem)] font-semibold tracking-tight text-[var(--text)]"
                     >
                       {name}
                     </h2>
-                    <p className="mt-2 text-sm text-[var(--text-muted)]">{role}</p>
+                    <p className="mt-2 break-words text-sm text-[var(--text-muted)]">{role}</p>
                     <div className="mt-5 h-px w-12 bg-gradient-to-r from-white/40 to-transparent" />
                     <p className="mt-5 text-[14px] leading-relaxed text-[var(--text-muted)] sm:text-[15px]">
                       {bio1}

@@ -118,10 +118,10 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             className="relative z-10 flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-[1.25rem] border border-[var(--border)] bg-[var(--bg-panel)] shadow-[var(--shadow-panel)] sm:rounded-[var(--radius-xl)]"
           >
-            <div className="relative aspect-[16/10] shrink-0 overflow-hidden bg-[var(--bg-soft)] sm:aspect-[16/9]">
+            <div className="relative aspect-[16/10] shrink-0 overflow-hidden bg-black/30 sm:aspect-[16/9]">
               {showFileLoopOnCover ? (
                 <ProjectVideo
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-contain"
                   src={primaryVideo}
                   poster={activeImage}
                   mode="modal"
@@ -140,9 +140,15 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
                     alt={project.title}
                     className="h-full w-full object-contain"
                   />
-                  <span className="pointer-events-none absolute bottom-3 left-3 rounded-full border border-white/20 bg-black/45 px-2.5 py-1 text-[10px] text-white/85 opacity-0 backdrop-blur transition group-hover:opacity-100 sm:bottom-4 sm:left-4">
-                    {lang === "RU" ? "Увеличить" : "Enlarge"}
-                  </span>
+                  {videos.length === 0 ? (
+                    <span className="pointer-events-none absolute bottom-3 left-3 rounded-full border border-white/20 bg-black/45 px-2.5 py-1 text-[10px] text-white/85 opacity-0 backdrop-blur transition group-hover:opacity-100 sm:bottom-4 sm:left-4">
+                      {lang === "RU" ? "Увеличить" : "Enlarge"}
+                    </span>
+                  ) : (
+                    <span className="pointer-events-none absolute bottom-3 right-3 rounded-full border border-white/20 bg-black/45 px-2.5 py-1 text-[10px] text-white/85 opacity-0 backdrop-blur transition group-hover:opacity-100 sm:bottom-4 sm:right-4">
+                      {lang === "RU" ? "Увеличить" : "Enlarge"}
+                    </span>
+                  )}
                 </button>
               ) : (
                 <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-[var(--bg-elevated)] px-6 text-center">
@@ -260,8 +266,8 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
               </div>
 
               {gallery.length > 0 ? (
-                <div className="mb-6 -mx-1 overflow-x-auto px-1 pb-3 pt-2">
-                  <div className="flex w-max min-w-full gap-2.5">
+                <div className="mb-6 overflow-x-auto pb-1 pt-1">
+                  <div className="flex w-max min-w-full gap-2.5 px-0.5 py-2">
                     {gallery.map((url, index) => {
                       const active = index === activeIndex;
                       return (
@@ -274,15 +280,15 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
                           }}
                           className={`group relative h-16 w-[5.5rem] shrink-0 overflow-hidden rounded-[var(--radius-md)] border transition duration-300 sm:h-[4.75rem] sm:w-28 ${
                             active
-                              ? "z-[1] border-[var(--text-muted)] shadow-[0_10px_28px_rgba(0,0,0,0.28)] ring-1 ring-[var(--text-muted)]/40"
-                              : "border-[var(--border)] opacity-75 hover:z-[1] hover:opacity-100 hover:shadow-[0_10px_24px_rgba(0,0,0,0.22)]"
+                              ? "z-[1] border-[var(--text-muted)] shadow-[0_8px_22px_rgba(0,0,0,0.25)] ring-1 ring-[var(--text-muted)]/35"
+                              : "border-[var(--border)] opacity-75 hover:z-[1] hover:opacity-100"
                           }`}
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={url}
                             alt=""
-                            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                            className="h-full w-full object-cover"
                           />
                         </button>
                       );
@@ -326,7 +332,7 @@ export default function ProjectModal({ project, lang, onClose }: ProjectModalPro
                             <img
                               src={thumb}
                               alt=""
-                              className="h-full w-full object-cover opacity-90 transition duration-500 group-hover:scale-[1.03] group-hover:opacity-100"
+                              className="h-full w-full object-cover opacity-90 transition duration-500 group-hover:opacity-100"
                             />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center bg-[var(--bg-elevated)] text-xs text-[var(--text-faint)]">

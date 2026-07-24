@@ -108,7 +108,9 @@ export default function VideoTheater({
           >
             <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3 sm:px-5">
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-[var(--text)]">{title}</p>
+                <p className="truncate text-sm font-semibold text-[var(--text)]" title={title}>
+                  {title}
+                </p>
                 <p className="mt-0.5 text-[11px] text-[var(--text-faint)]">
                   {label}
                   {videos.length > 1 ? ` · ${safeIndex + 1} / ${videos.length}` : ""}
@@ -173,22 +175,25 @@ export default function VideoTheater({
                 </div>
 
                 {videos.length > 1 ? (
-                  <div className="absolute inset-x-0 bottom-0 flex items-center justify-between p-3 lg:hidden">
+                  <div className="flex items-center justify-between gap-2 border-t border-white/10 bg-black/40 px-3 py-2 lg:hidden">
                     <button
                       type="button"
                       aria-label="Previous"
                       onClick={() =>
                         onIndexChange((safeIndex - 1 + videos.length) % videos.length)
                       }
-                      className="rounded-full border border-white/20 bg-black/50 px-3 py-1.5 text-sm text-white/85 backdrop-blur"
+                      className="rounded-full border border-white/20 bg-black/50 px-3 py-1.5 text-sm text-white/85"
                     >
                       ←
                     </button>
+                    <span className="text-[11px] text-white/55">
+                      {safeIndex + 1} / {videos.length}
+                    </span>
                     <button
                       type="button"
                       aria-label="Next"
                       onClick={() => onIndexChange((safeIndex + 1) % videos.length)}
-                      className="rounded-full border border-white/20 bg-black/50 px-3 py-1.5 text-sm text-white/85 backdrop-blur"
+                      className="rounded-full border border-white/20 bg-black/50 px-3 py-1.5 text-sm text-white/85"
                     >
                       →
                     </button>
