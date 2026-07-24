@@ -88,9 +88,15 @@ const Projects = memo(function Projects({ lang }: ProjectsProps) {
             </button>
             <Link
               href="/projects"
-              className="ml-1 hidden text-[11px] text-[var(--text-faint)] transition hover:text-[var(--text)] sm:inline"
+              prefetch
+              className="relative z-30 ml-1 hidden min-h-9 items-center rounded-full border border-[var(--border)] px-3 text-[11px] text-[var(--text-muted)] transition hover:border-[var(--border-strong)] hover:text-[var(--text)] sm:inline-flex"
+              onClick={(event) => {
+                // Never let the active carousel card steal this navigation.
+                event.stopPropagation();
+                setSelected(null);
+              }}
             >
-              {lang === "RU" ? "Все" : "All"}
+              {content.projects.viewAll || (lang === "RU" ? "Все работы" : "View all")}
             </Link>
           </div>
         </div>
@@ -234,8 +240,16 @@ const Projects = memo(function Projects({ lang }: ProjectsProps) {
           <p className="text-[11px] text-[var(--text-faint)]">
             {lang === "RU" ? "Свайп для листания" : "Swipe to browse"}
           </p>
-          <Link href="/projects" className="text-[11px] text-[var(--text-faint)]">
-            {lang === "RU" ? "Все" : "All"}
+          <Link
+            href="/projects"
+            prefetch
+            className="relative z-30 inline-flex min-h-9 items-center rounded-full border border-[var(--border)] px-3 text-[11px] text-[var(--text-muted)]"
+            onClick={(event) => {
+              event.stopPropagation();
+              setSelected(null);
+            }}
+          >
+            {content.projects.viewAll || (lang === "RU" ? "Все работы" : "View all")}
           </Link>
         </div>
       </div>
